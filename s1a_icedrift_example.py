@@ -9,8 +9,8 @@ Created on 17 Nov 2015
 execfile('s1a_icedrift.py')
 
 # Define Sentinel-1 image pair
-file_a = 'S1A_EW_GRDM_1SDH_20150328T074433_20150328T074533_005229_0069A8_801E.zip'
-file_b = 'S1A_EW_GRDM_1SDH_20150329T163452_20150329T163552_005249_006A15_FD89.zip'
+file_a = 'S1A_EW_GRDM_1SDH_20150328T074433_20150328T074533_005229_0069A8_801E.SAFE'
+file_b = 'S1A_EW_GRDM_1SDH_20150329T163452_20150329T163552_005249_006A15_FD89.SAFE'
 
 # Load Sentinel-1 images as Nansat objects
 n_a=Nansat(file_a)
@@ -45,7 +45,7 @@ def draw_screen_poly( lons, lats, m, color='black' , color_edge='black'):
     xy = zip(x,y)
     poly = Polygon( xy, facecolor=color,edgecolor=color_edge, alpha=0.4 )
     plt.gca().add_patch(poly)
-    
+
 def vec_from_geo(geometry):
     # Get Geometry inside Geometry
     ring=geometry.GetGeometryRef(0)
@@ -55,7 +55,7 @@ def vec_from_geo(geometry):
             lon, lat, z = ring.GetPoint(p)
             lons.append(lon)
             lats.append(lat)
-    #        pointsZ.append(z) 
+    #        pointsZ.append(z)
     return lons, lats #,z
 
 
@@ -71,7 +71,7 @@ for i in range(query_lonlat[0].size):
     dlat  = (train_lonlat[1][i] - query_lonlat[1][i])*np.pi/180;
     slat  = (train_lonlat[1][i] + query_lonlat[1][i])*np.pi/180;
     p1 = (dlong)*np.cos(0.5*slat)
-    p2 = (dlat)  
+    p2 = (dlat)
     u.append(6371000 * p1)
     v.append(6371000 * p2)
 
@@ -104,13 +104,13 @@ for i in range(len(y_grid)-1):
     for j in range(len(x_grid)-1):
         # filter inside grid box, query needs to be inside box
         inside_grid = (x >= x_grid[j]) * (x <= x_grid[j+1]) * (y >= y_grid[i]) * (y <= y_grid[i+1])
-        
+
         u_row.append(np.mean(u[inside_grid]))
         v_row.append(np.mean(v[inside_grid]))
         u_std_row.append(np.std(u[inside_grid]))
         v_std_row.append(np.std(v[inside_grid]))
         n_row.append(len(u[inside_grid]))
-        
+
         u_m=np.mean(u[inside_grid])
         v_m=np.mean(v[inside_grid])
         u_i=u[inside_grid]
@@ -123,14 +123,14 @@ for i in range(len(y_grid)-1):
         else:
             rmsd_point=0
         rmsd_row.append(rmsd_point)
-        
+
     u_grid.append(np.array(u_row))
     v_grid.append(np.array(v_row))
     u_std_grid.append(np.array(u_std_row))
     v_std_grid.append(np.array(v_std_row))
     n_grid.append(np.array(n_row))
     rmsd_grid.append(np.array(rmsd_row))
-    
+
 
 # Geometry of SAR images
 sar_geometry_01=n_a.get_border_geometry()
@@ -199,7 +199,7 @@ for i in range(len(x_grid)-1):
         draw_screen_poly( lons, lats, m , color=color_i, color_edge='gray')
         if x_i==0:
             draw_screen_poly( lons, lats, m , color='gray', color_edge='gray')
-        
+
 cmmapable = cm.ScalarMappable(norm, my_cmap)
 cmmapable.set_array(range(min_val, max_val))
 ax = gca()
@@ -237,7 +237,7 @@ for i in range(len(x_grid)-1):
         draw_screen_poly( lons, lats, m , color=color_i, color_edge='gray')
         if x_i==0:
             draw_screen_poly( lons, lats, m , color='gray', color_edge='gray')
-        
+
 cmmapable = cm.ScalarMappable(norm, my_cmap)
 cmmapable.set_array(range(min_val, max_val))
 ax = gca()
