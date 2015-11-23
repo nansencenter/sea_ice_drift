@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
 
+from nansat import Domain
+
 
 def get_uint8_image(image, vmin, vmax):
     ''' Scale image from float (or any) input array to uint8 '''
@@ -55,3 +57,45 @@ def get_match_coords(keyPoints1, descriptors1,
     y2 = np.array([keyPoints2[m.trainIdx].pt[1] for m in good])
 
     return x1, y1, x2, y2
+
+def reproject_gcp_to_stere(n):
+    ''' Change projection of GCPs to stereographic add TPS option '''
+    lon, lat = n.get_border()
+    # reproject Ground Control Points (GCPS) to stereographic projection
+    n.reproject_GCPs('+proj=stere +lon_0=%f +lat_0=%f +no_defs' % (lon.mean(), lat.mean()))
+    n.vrt.tps = True
+
+    return n
+
+def get_displacement_km(n1, x1, y1, n2, x2, y2):
+    ''' Find displacement in kilometers using Domain'''
+    lon1, lat1 = n1.transform_points(x1, y1)
+    lon2, lat2 = n2.transform_points(x2, y2)
+
+    d = Domain('+proj=stere +lon_0=%f +lat_0=%f +no_defs' % (lon1.mean(), lat1.mean()),
+                '-te -100000 -100000 100000 100000 -tr 1000 1000')
+
+    x1d, y1d = d.transform_points(lon1, lat1, 1)
+    x2d, y2d = d.transform_points(lon2, lat2, 1)
+
+    return x2d - x1d, y1d - y2d
+
+
+def get_displacement_pix(n1, x1, y1, n2, x2, y2):
+    ''' Find displacement in pixels of the first image'''
+    lon2, lat2 = n2.transform_points(x2, y2)
+    x2n1, y2n1 = n1.transform_points(lon2, lat2, 1)
+
+    return x2n1 - x1, y2n1 - y1
+
+
+
+
+
+
+
+
+
+
+
+
