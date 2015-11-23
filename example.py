@@ -90,7 +90,7 @@ img2 = n2['sigma0_HV']
 img1 = get_uint8_image(img1, vmin, vmax)
 img2 = get_uint8_image(img2, vmin, vmax)
 
-# find few key points
+# find many key points
 kp1, descr1 = find_key_points(img1, nFeatures=200000)
 kp2, descr2 = find_key_points(img2, nFeatures=200000)
 
@@ -128,11 +128,11 @@ lons_sar_02, lats_sar_02 = n2.get_border()
 IntersectBorderGeometry = n1.get_border_geometry().Intersection(n2.get_border_geometry())
 lons_over,lats_over = np.array(IntersectBorderGeometry.GetGeometryRef(0).GetPoints()).T
 
+# lon, lat limits for mapping
 lonMin = min(lons_sar_01.min(), lons_sar_02.min())
 lonMax = max(lons_sar_01.max(), lons_sar_02.max())
 latMin = min(lats_sar_01.min(), lats_sar_02.min())
 latMax = max(lats_sar_01.max(), lats_sar_02.max())
-
 lon_0 = (lonMin + lonMax) / 2
 lat_0 = (latMin + latMax) / 2
 
@@ -200,9 +200,9 @@ m = make_basemap(lons_sar_01, lats_sar_01,
                  lons_sar_02, lats_sar_02,
                  lons_over,lats_over,
                  lon_0, lat_0,
-                 resolution='c')
+                 resolution='h')
 x1, y1 = m(lon1, lat1)
-m.quiver(x1, y1, u, v, zorder=10)
+m.quiver(x1, y1, u, v, zorder=10, scale=1000, width=.0001)
 
 plt.title(str(lon1.size)+" vectors")
 plt.savefig('drift_vectors.png', dpi=300, bbox_inches='tight', pad_inches=0)
@@ -214,10 +214,10 @@ m = make_basemap(lons_sar_01, lats_sar_01,
                  lons_sar_02, lats_sar_02,
                  lons_over,lats_over,
                  lon_0, lat_0,
-                 resolution='c')
+                 resolution='h')
 
 xGrid, yGrid = m(lonGrid, latGrid)
-m.pcolormesh(xGrid, yGrid, n_grid, vmin=0, vmax=50, zorder=10)
+m.pcolormesh(xGrid, yGrid, n_grid, vmin=0, vmax=250, zorder=10)
 cbar = plt.colorbar()
 cbar.set_label('Number of vectors')
 plt.savefig('density_grid.png', dpi=300, bbox_inches='tight', pad_inches=0)
@@ -229,10 +229,10 @@ m = make_basemap(lons_sar_01, lats_sar_01,
                  lons_sar_02, lats_sar_02,
                  lons_over,lats_over,
                  lon_0, lat_0,
-                 resolution='c')
+                 resolution='h')
 
 xGrid, yGrid = m(lonGrid, latGrid)
-m.pcolormesh(xGrid, yGrid, rmsd_grid, vmin=0, vmax=50, zorder=10)
+m.pcolormesh(xGrid, yGrid, rmsd_grid, vmin=0, vmax=10, zorder=10)
 cbar = plt.colorbar()
 cbar.set_label('RMSD [km]')
 plt.savefig('rmsd_grid.png', dpi=300, bbox_inches='tight', pad_inches=0)
