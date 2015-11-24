@@ -6,8 +6,8 @@ import unittest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sea_ice_drift.sea_ice_drift import get_uint8_image, find_key_points
-from sea_ice_drift.sea_ice_drift import get_match_coords
+from sea_ice_drift import get_uint8_image, find_key_points
+from sea_ice_drift import get_match_coords
 
 
 class IceDriftTest(unittest.TestCase):
@@ -19,8 +19,8 @@ class IceDriftTest(unittest.TestCase):
                                          'S1A_EW_GRDM_1SDH_20150328T074433_20150328T074533_005229_0069A8_801E.npz'))['img']
         self.img2 = np.load(os.path.join(self.testdata_path,
                                          'S1A_EW_GRDM_1SDH_20150329T163452_20150329T163552_005249_006A15_FD89.npz'))['img']
-        self.imgMin = 0
-        self.imgMax = 0.1
+        self.imgMin = 0.001
+        self.imgMax = 0.013
 
     def test_get_uint8_image(self):
         ''' Shall scale image values from float (or any) to 0 - 255 [uint8] '''

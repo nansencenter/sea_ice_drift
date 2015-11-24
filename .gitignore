@@ -2,4 +2,4 @@
 *.swp
 *.so
 *.o
-testdata/*.png
+sea_ice_drift/testdata/*.png
