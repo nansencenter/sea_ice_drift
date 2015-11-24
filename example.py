@@ -57,13 +57,6 @@ def make_basemap(lons_sar_01, lats_sar_01,
 
     return m
 
-# size reduction factor
-factor = 0.5
-# min, max of sigma0 HV (linear units)
-vmin, vmax = 0, 0.013
-# max allowed displacement
-maxSpeed = 50
-
 # input directory
 idir = '/files/sentinel1a/safefiles/'
 # Define Sentinel-1 image pair
@@ -71,56 +64,14 @@ file1 = 'S1A_EW_GRDM_1SDH_20150328T074433_20150328T074533_005229_0069A8_801E.SAF
 file2 = 'S1A_EW_GRDM_1SDH_20150329T163452_20150329T163552_005249_006A15_FD89.SAFE'
 
 # Load Sentinel-1 images as Nansat objects
-n1 = Nansat(os.path.join(idir, file1))
+n1 = SeaIceDrift(os.path.join(idir, file1))
 n2 = Nansat(os.path.join(idir, file2))
 
-# increase accuracy
-n1 = reproject_gcp_to_stere(n1)
-n2 = reproject_gcp_to_stere(n2)
-
-# increase speed
-n1.resize(factor, eResampleAlg=-1)
-n2.resize(factor, eResampleAlg=-1)
-
-# get matrices with data
-img1 = n1['sigma0_HV']
-img2 = n2['sigma0_HV']
-
-# convert to 0 - 255
-img1 = get_uint8_image(img1, vmin, vmax)
-img2 = get_uint8_image(img2, vmin, vmax)
-
-# find many key points
-kp1, descr1 = find_key_points(img1, nFeatures=200000)
-kp2, descr2 = find_key_points(img2, nFeatures=200000)
-
-# find coordinates of matching key points
-x1, y1, x2, y2 = get_match_coords(kp1, descr1, kp2, descr2)
-
-# convert x,y to lon, lat
-lon1, lat1 = n1.transform_points(x1, y1)
-lon2, lat2 = n2.transform_points(x2, y2)
-
-# find displacement in kilometers
-u, v = get_displacement_km(n1, x1, y1, n2, x2, y2)
-
-## b) HH+HV
-#query_lonlat_HH, train_lonlat_HH = s1a_icedrift(n_a,n_b,band='HH')#,nFeatures=100000,patchSize=34,ratio_test=0.8,resize_factor=0.5)
-#query_lonlat_HV, train_lonlat_HV = s1a_icedrift(n_a,n_b,band='HV')
-#query_lonlat = np.column_stack((query_lonlat_HH,query_lonlat_HV))
-#train_lonlat = np.column_stack((train_lonlat_HH,train_lonlat_HV))
-
-# filter too high u, v
-gpi = np.hypot(u, v) < maxSpeed
-u = u[gpi]
-v = v[gpi]
-lon1 = lon1[gpi]
-lat1 = lat1[gpi]
-lon2 = lon2[gpi]
-lat2 = lat2[gpi]
+u, v, lon1, lat1, lon2, lat2 = n1.get_drift_vectors(n2, nFeatures=200000, maxSpeed=0.5)
 
 
-############################################################################### Plot results
+###############################################################################
+###### Plot results
 # Geometry of SAR images
 lons_sar_01, lats_sar_01 = n1.get_border()
 lons_sar_02, lats_sar_02 = n2.get_border()
@@ -194,7 +145,7 @@ n_grid = np.ma.array(n_grid, mask=(n_grid == 0))
 rmsd_grid = np.array(rmsd_grid)
 rmsd_grid = np.ma.array(rmsd_grid, mask=n_grid.mask)
 
-############################################################################### 
+###############################################################################
 # Plot vectors
 m = make_basemap(lons_sar_01, lats_sar_01,
                  lons_sar_02, lats_sar_02,
@@ -202,7 +153,7 @@ m = make_basemap(lons_sar_01, lats_sar_01,
                  lon_0, lat_0,
                  resolution='h')
 x1, y1 = m(lon1, lat1)
-m.quiver(x1, y1, u, v, zorder=10, scale=1000, width=.0001)
+m.quiver(x1, y1, u, v, zorder=10, scale=10, width=.0001)
 
 plt.title(str(lon1.size)+" vectors")
 plt.savefig('drift_vectors.png', dpi=300, bbox_inches='tight', pad_inches=0)

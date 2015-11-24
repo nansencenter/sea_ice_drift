@@ -1,8 +1,16 @@
 import numpy as np
 import cv2
 
-from nansat import Domain
+from nansat import Nansat, Domain
 
+def reproject_gcp_to_stere(n):
+    ''' Change projection of GCPs to stereographic add TPS option '''
+    lon, lat = n.get_border()
+    # reproject Ground Control Points (GCPS) to stereographic projection
+    n.reproject_GCPs('+proj=stere +lon_0=%f +lat_0=%f +no_defs' % (lon.mean(), lat.mean()))
+    n.vrt.tps = True
+
+    return n
 
 def get_uint8_image(image, vmin, vmax):
     ''' Scale image from float (or any) input array to uint8 '''
@@ -17,7 +25,8 @@ def find_key_points(image, detector=cv2.ORB,
                     edgeThreshold=34,
                     nFeatures=100000,
                     nLevels=7,
-                    patchSize=34):
+                    patchSize=34,
+                    **kwargs):
     ''' Initiate detector and find key points on an image '''
 
     detector = detector()
@@ -36,7 +45,8 @@ def get_match_coords(keyPoints1, descriptors1,
                                     keyPoints2, descriptors2,
                                     matcher=cv2.BFMatcher,
                                     norm=cv2.NORM_HAMMING,
-                                    ratio_test=0.75):
+                                    ratio_test=0.75,
+                                    **kwargs):
     ''' Filter matching keypoints and convert to X,Y coordinates '''
     # Match keypoints using BFMatcher with cv2.NORM_HAMMING
     bf = matcher(norm)
@@ -58,15 +68,6 @@ def get_match_coords(keyPoints1, descriptors1,
 
     return x1, y1, x2, y2
 
-def reproject_gcp_to_stere(n):
-    ''' Change projection of GCPs to stereographic add TPS option '''
-    lon, lat = n.get_border()
-    # reproject Ground Control Points (GCPS) to stereographic projection
-    n.reproject_GCPs('+proj=stere +lon_0=%f +lat_0=%f +no_defs' % (lon.mean(), lat.mean()))
-    n.vrt.tps = True
-
-    return n
-
 def get_displacement_km(n1, x1, y1, n2, x2, y2):
     ''' Find displacement in kilometers using Domain'''
     lon1, lat1 = n1.transform_points(x1, y1)
@@ -80,7 +81,6 @@ def get_displacement_km(n1, x1, y1, n2, x2, y2):
 
     return x2d - x1d, y1d - y2d
 
-
 def get_displacement_pix(n1, x1, y1, n2, x2, y2):
     ''' Find displacement in pixels of the first image'''
     lon2, lat2 = n2.transform_points(x2, y2)
@@ -88,14 +88,63 @@ def get_displacement_pix(n1, x1, y1, n2, x2, y2):
 
     return x2n1 - x1, y2n1 - y1
 
+def remove_too_large(u, v, lon1, lat1, lon2, lat2, maxSpeed):
+    ''' filter too high u, v '''
+    gpi = np.hypot(u, v) < maxSpeed
+    u = u[gpi]
+    v = v[gpi]
+    lon1 = lon1[gpi]
+    lat1 = lat1[gpi]
+    lon2 = lon2[gpi]
+    lat2 = lat2[gpi]
+
+    return u, v, lon1, lat1, lon2, lat2
 
 
+class SeaIceDrift(Nansat):
+    def get_drift_vectors(n1, n2, bandName='sigma0_HV', factor=0.5,
+                          vmin=0, vmax=0.013, maxSpeed=50, **kwargs):
+        ''' Estimate drift of features between two images '''
+        # increase speed
+        n1 = reproject_gcp_to_stere(n1)
+        n2 = reproject_gcp_to_stere(n2)
 
+        # increase speed
+        n1.resize(factor, eResampleAlg=-1)
+        n2.resize(factor, eResampleAlg=-1)
 
+        # get matrices with data
+        img1 = n1[bandName]
+        img2 = n2[bandName]
 
+        # convert to 0 - 255
+        img1 = get_uint8_image(img1, vmin, vmax)
+        img2 = get_uint8_image(img2, vmin, vmax)
 
+        # find many key points
+        kp1, descr1 = find_key_points(img1, **kwargs)
+        kp2, descr2 = find_key_points(img2, **kwargs)
 
+        # find coordinates of matching key points
+        x1, y1, x2, y2 = get_match_coords(kp1, descr1, kp2, descr2, **kwargs)
 
+        # convert x,y to lon, lat
+        lon1, lat1 = n1.transform_points(x1, y1)
+        lon2, lat2 = n2.transform_points(x2, y2)
 
+        # find displacement in kilometers
+        u, v = get_displacement_km(n1, x1, y1, n2, x2, y2)
 
+        # convert to speed in m/s
+        t1 = n1.get_time()[0]
+        t2 = n2.get_time()[0]
+        dt = t2 - t1
+        u = u * 1000 / dt.total_seconds()
+        v = v * 1000 / dt.total_seconds()
 
+        # filter too high u, v
+        u, v, lon1, lat1, lon2, lat2 = remove_too_large(u, v, lon1, lat1,
+                                                              lon2, lat2,
+                                                              maxSpeed)
+
+        return u, v, lon1, lat1, lon2, lat2
