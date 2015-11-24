@@ -6,3 +6,4 @@ sea_ice_drift/testdata/*.png
 dist/
 sea_ice_drift.egg-info/
 .ipynb_checkpoints/
+build/
