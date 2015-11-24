@@ -1,0 +1,10 @@
+*.pyc
+*.swp
+*.so
+*.o
+sea_ice_drift/testdata/*.png
+experiments/*.png
+dist/
+sea_ice_drift.egg-info/
+.ipynb_checkpoints/
+build/
