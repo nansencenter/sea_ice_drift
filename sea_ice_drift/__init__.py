@@ -9,5 +9,6 @@ __all__ = [
     'reproject_gcp_to_stere',
     'get_displacement_km',
     'get_displacement_pix',
+    'lstsq_filter',
     'SeaIceDrift',
 ]

@@ -67,7 +67,7 @@ file2 = 'S1A_EW_GRDM_1SDH_20150329T163452_20150329T163552_005249_006A15_FD89.SAF
 n1 = SeaIceDrift(os.path.join(idir, file1))
 n2 = Nansat(os.path.join(idir, file2))
 
-u, v, lon1, lat1, lon2, lat2 = n1.get_drift_vectors(n2, nFeatures=10000, maxSpeed=0.5)
+u, v, lon1, lat1, lon2, lat2 = n1.get_drift_vectors(n2, nFeatures=10000, maxSpeed=1)
 
 
 ###############################################################################

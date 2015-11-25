@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sea_ice_drift import get_uint8_image, find_key_points
-from sea_ice_drift import get_match_coords
+from sea_ice_drift import get_match_coords, lstsq_filter
 
 
 class IceDriftTest(unittest.TestCase):
@@ -43,12 +43,25 @@ class IceDriftTest(unittest.TestCase):
         self.assertTrue(len(keyPoints1) > 1000)
 
     def test_get_match_coords(self):
+        ''' Shall find matching coordinates '''
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
         img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
         keyPoints1, descr1 = find_key_points(img1)
         keyPoints2, descr2 = find_key_points(img2)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
+
+    def test_lstsq_filter(self):
+        ''' Shall filter out not matching points '''
+        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
+        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
+        keyPoints1, descr1 = find_key_points(img1)
+        keyPoints2, descr2 = find_key_points(img2)
+        x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
+                                          keyPoints2, descr2)
+
+        goodPixels = lstsq_filter(x1, y1, x2, y2)
+        self.assertTrue(len(goodPixels) > len(goodPixels[goodPixels]))
 
 if __name__ == '__main__':
     unittest.main()

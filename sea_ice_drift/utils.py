@@ -100,10 +100,41 @@ def remove_too_large(u, v, lon1, lat1, lon2, lat2, maxSpeed):
 
     return u, v, lon1, lat1, lon2, lat2
 
+def lstsq_filter(x1, y1, x2, y2, psi=600, **kwargs):
+    ''' Remove vectors that don't fit the model x1 = f(x2, y2)^n
+
+    Fit the model x1 = f(x2, y2)^n using least squares method
+    Simulate x1 using the model
+    Compare actual and simulated x1 and remove points where error is too high
+    Parameters:
+        x1, y1, x2, y2 : coordinates of start and end of displacement [pixels]
+        psi : threshold error between actual and simulated x1 [pixels]
+    '''
+    # stack together target coordinates
+    A = np.vstack([np.ones(len(x2)), x2, y2, x2**2, y2**2, x2*y2, x2**3, y2**3]).T
+
+    # find B in x1 = B * [x2, y2]
+    Bx = np.linalg.lstsq(A, x1)[0]
+    By = np.linalg.lstsq(A, y1)[0]
+
+    # calculate simulated x1sim = B * [x2, y2]
+    x1sim = np.dot(A, Bx)
+    y1sim = np.dot(A, By)
+
+    # find error between actual and simulated x1
+    xErr = (x1 - x1sim) ** 2
+    yErr = (y1 - y1sim) ** 2
+
+    # find pixels with error below psi
+    goodPixels = (xErr < psi ** 2) * (yErr < psi ** 2)
+
+    return goodPixels
+
 
 class SeaIceDrift(Nansat):
-    def get_drift_vectors(n1, n2, bandName='sigma0_HV', factor=0.5,
-                          vmin=0, vmax=0.013, maxSpeed=50, **kwargs):
+    def get_drift_vectors(n1, n2, bandName='sigma0_HV',
+                          factor=0.5, vmin=0, vmax=0.013,
+                          maxSpeed=0.5, **kwargs):
         ''' Estimate drift of features between two images '''
         # increase speed
         n1 = reproject_gcp_to_stere(n1)
@@ -127,6 +158,13 @@ class SeaIceDrift(Nansat):
 
         # find coordinates of matching key points
         x1, y1, x2, y2 = get_match_coords(kp1, descr1, kp2, descr2, **kwargs)
+
+        # filter out inconsistent pairs
+        goodPixels = lstsq_filter(x1, y1, x2, y2, **kwargs)
+        x1 = x1[goodPixels]
+        y1 = y1[goodPixels]
+        x2 = x2[goodPixels]
+        y2 = y2[goodPixels]
 
         # convert x,y to lon, lat
         lon1, lat1 = n1.transform_points(x1, y1)
