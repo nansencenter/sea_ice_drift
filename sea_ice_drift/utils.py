@@ -174,9 +174,7 @@ class SeaIceDrift(Nansat):
         u, v = get_displacement_km(n1, x1, y1, n2, x2, y2)
 
         # convert to speed in m/s
-        t1 = n1.get_time()[0]
-        t2 = n2.get_time()[0]
-        dt = t2 - t1
+        dt = n2.time_coverage_start - n1.time_coverage_start
         u = u * 1000 / dt.total_seconds()
         v = v * 1000 / dt.total_seconds()
 
