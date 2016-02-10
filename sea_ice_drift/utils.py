@@ -18,7 +18,8 @@ def get_uint8_image(image, vmin, vmax):
     uint8Image = 255 * (image - vmin) / (vmax - vmin)
     uint8Image[uint8Image < 0] = 0
     uint8Image[uint8Image > 255] = 255
-
+    uint8Image[~np.isfinite(uint8Image)] = 0
+    
     return uint8Image.astype('uint8')
 
 def find_key_points(image, detector=cv2.ORB,
