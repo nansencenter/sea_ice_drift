@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import cv2
 
@@ -49,17 +50,20 @@ def get_match_coords(keyPoints1, descriptors1,
                                     ratio_test=0.75,
                                     **kwargs):
     ''' Filter matching keypoints and convert to X,Y coordinates '''
+    t0 = time.time()
     # Match keypoints using BFMatcher with cv2.NORM_HAMMING
     bf = matcher(norm)
     matches = bf.knnMatch(descriptors1, descriptors2, k=2)
-    print 'Keypoints matched'
+    t1 = time.time()
+    print 'Keypoints matched', t1 - t0
 
     # Apply ratio test from Lowe
     good = []
     for m,n in matches:
         if m.distance < ratio_test*n.distance:
             good.append(m)
-    print 'Ratio test %f found %d keypoints' % (ratio_test, len(good))
+    t2 = time.time()
+    print 'Ratio test %f found %d keypoints in %f' % (ratio_test, len(good), t2-t1)
 
     # Coordinates for start, end point of vectors
     x1 = np.array([keyPoints1[m.queryIdx].pt[0] for m in good])
