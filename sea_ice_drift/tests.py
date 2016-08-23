@@ -1,11 +1,14 @@
 from __future__ import absolute_import
 
 import os
+import sys
+import glob
 import unittest
 
 import numpy as np
 import matplotlib.pyplot as plt
 
+from nansat import Nansat
 from sea_ice_drift import get_uint8_image, find_key_points
 from sea_ice_drift import get_match_coords, lstsq_filter
 
@@ -13,12 +16,16 @@ from sea_ice_drift import get_match_coords, lstsq_filter
 class IceDriftTest(unittest.TestCase):
     def setUp(self):
         ''' Load test data '''
-        self.path = os.path.dirname(os.path.abspath(__file__))
-        self.testdata_path = os.path.join(self.path, 'testdata')
-        self.img1 = np.load(os.path.join(self.testdata_path,
-                                         'S1A_EW_GRDM_1SDH_20150328T074433_20150328T074533_005229_0069A8_801E.npz'))['img']
-        self.img2 = np.load(os.path.join(self.testdata_path,
-                                         'S1A_EW_GRDM_1SDH_20150329T163452_20150329T163552_005249_006A15_FD89.npz'))['img']
+        testDir = os.getenv('ICE_DRIFT_TEST_DATA_DIR')
+        if testDir is None:
+            sys.exit('ICE_DRIFT_TEST_DATA_DIR is not defined')
+        testFiles = sorted(glob.glob(os.path.join(testDir, 'S1A_*tif')))
+        if len(testFiles) < 2:
+            sys.exit('Not enough test files in %s' % testDir)
+        self.n1 = Nansat(testFiles[0])
+        self.n2 = Nansat(testFiles[1])
+        self.img1 = self.n1['sigma0_HV']
+        self.img2 = self.n2['sigma0_HV']
         self.imgMin = 0.001
         self.imgMax = 0.013
 
@@ -26,14 +33,11 @@ class IceDriftTest(unittest.TestCase):
         ''' Shall scale image values from float (or any) to 0 - 255 [uint8] '''
 
         imageUint8 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-
-        plt.imsave(os.path.join(self.testdata_path, '0_imgUint8.png'),
-                   imageUint8, vmin=0, vmax=255)
+        plt.imsave('0_imgUint8.png', imageUint8, vmin=0, vmax=255)
 
         self.assertEqual(imageUint8.dtype, np.uint8)
         self.assertEqual(imageUint8.min(), 0)
         self.assertEqual(imageUint8.max(), 255)
-
 
     def test_find_key_points(self):
         ''' Shall find key points using default values '''
@@ -46,8 +50,8 @@ class IceDriftTest(unittest.TestCase):
         ''' Shall find matching coordinates '''
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
         img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1)
-        keyPoints2, descr2 = find_key_points(img2)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
 
@@ -55,8 +59,8 @@ class IceDriftTest(unittest.TestCase):
         ''' Shall filter out not matching points '''
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
         img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1)
-        keyPoints2, descr2 = find_key_points(img2)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
 
