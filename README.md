@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/nansencenter/sea_ice_drift.svg?branch=master)](https://travis-ci.org/nansencenter/sea_ice_drift)
+[![Coverage Status](https://coveralls.io/repos/nansencenter/sea_ice_drift/badge.svg?branch=master)](https://coveralls.io/r/nansencenter/sea_ice_drift)
+
 # sea_ice_drift
 Sea ice drift from satellite data using OpenCV feature tracking
 
