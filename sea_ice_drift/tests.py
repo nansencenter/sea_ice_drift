@@ -6,9 +6,8 @@ import glob
 import unittest
 
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+plt.switch_backend('Agg')
 
 from nansat import Nansat, NSR
 from sea_ice_drift import (SeaIceDrift,
