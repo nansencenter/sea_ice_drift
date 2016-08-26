@@ -29,7 +29,7 @@ install:
   - python setup.py install
 
 script: #"cd ..; nosetests --with-coverage --cover-package=nansat nansat.tests"
-  - coverage run --source=sea_ice_drift setup.py test
+  - coverage run --source=sea_ice_drift --omit=sea_ice_drift/tests.py setup.py test
 
 after_success:
   - coveralls
