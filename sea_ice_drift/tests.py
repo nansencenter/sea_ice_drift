@@ -8,10 +8,10 @@ import unittest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from nansat import Nansat
-from sea_ice_drift import get_uint8_image, find_key_points
-from sea_ice_drift import get_match_coords, lstsq_filter
-
+from nansat import Nansat, NSR
+from sea_ice_drift import (get_uint8_image, find_key_points,
+                           get_match_coords, lstsq_filter,
+                           reproject_gcp_to_stere)
 
 class IceDriftTest(unittest.TestCase):
     def setUp(self):
@@ -28,6 +28,15 @@ class IceDriftTest(unittest.TestCase):
         self.img2 = self.n2['sigma0_HV']
         self.imgMin = 0.001
         self.imgMax = 0.013
+
+    def test_reproject_gcp_to_stere(self):
+        ''' Shall change projection of GCPs to stere '''
+        n1pro = reproject_gcp_to_stere(self.n1)
+
+        self.assertTrue(n1pro.vrt.tps)
+        self.assertTrue(len(n1pro.vrt.dataset.GetGCPs()) > 0)
+        self.assertTrue((NSR(n1pro.vrt.dataset.GetGCPProjection())
+                            .ExportToProj4().startswith('+proj=stere')))
 
     def test_get_uint8_image(self):
         ''' Shall scale image values from float (or any) to 0 - 255 [uint8] '''
