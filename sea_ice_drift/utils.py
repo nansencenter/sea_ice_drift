@@ -1,6 +1,12 @@
 import time
+
 import numpy as np
+
+from scipy import ndimage as nd
+from scipy.interpolate import griddata
+
 import cv2
+
 from nansat import Nansat, Domain
 
 def reproject_gcp_to_stere(n):
@@ -152,6 +158,9 @@ def lstsq_filter(x1, y1, x2, y2, psi=600, **kwargs):
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
 def get_denoised_object(filename, bandName, factor):
+    ''' Use sentinel1denoised and preform thermal noise removal
+    Import is done within the function to make the dependency not so strict
+    '''
     from sentinel1denoised.S1_EW_GRD_NoiseCorrection import Sentinel1Image
     s = Sentinel1Image(filename)
     s.add_denoised_band('sigma0_HV')
@@ -163,6 +172,68 @@ def get_denoised_object(filename, bandName, factor):
     n.set_metadata(s.get_metadata())
 
     return n
+
+def x2y2_interpolation_poly(x1, y1, x2, y2, x1grd, y1grd, order=1):
+    ''' Interpolate values of x2/y2 onto full-res grids of x1/y1 using
+    polynomial of order 1 (or 2 or 3)'''
+    A = [np.ones(len(x1)), x1, y1]
+    if order > 1:
+        A += [x1**2, y1**2, x1*y1]
+    if order > 2:
+        A += [x1**3, y1**3, x1**2*y1, y1**2*x1]
+
+    A = np.vstack(A).T
+    Bx = np.linalg.lstsq(A, x2)[0]
+    By = np.linalg.lstsq(A, y2)[0]
+    x1grdF = x1grd.flatten()
+    y1grdF = y1grd.flatten()
+
+    A = [np.ones(len(x1grdF)), x1grdF, y1grdF]
+    if order > 1:
+        A += [x1grdF**2, y1grdF**2, x1grdF*y1grdF]
+    if order > 2:
+        A += [x1grdF**3, y1grdF**3, x1grdF**2*y1grdF, y1grdF**2*x1grdF]
+    A = np.vstack(A).T
+    x2grd = np.dot(A, Bx).reshape(x1grd.shape)
+    y2grd = np.dot(A, By).reshape(x1grd.shape)
+
+    return x2grd, y2grd
+
+def x2y2_interpolation_near(x1, y1, x2, y2, x1grd, y1grd, method='linear'):
+    ''' Interpolate values of x2/y2 onto full-res grids of x1/y1 using
+    linear interpolation of nearest points '''
+    src = np.array([y1, x1]).T
+    dst = np.array([y1grd, x1grd]).T
+    x2grd = griddata(src, x2, dst, method=method).T
+    y2grd = griddata(src, y2, dst, method=method).T
+
+    return x2grd, y2grd
+
+def get_rotated_template(img, r, c, size, angle, order=1):
+    ''' Get rotated template of a given size '''
+    hws = size / 2
+    angle_rad = np.radians(angle)
+    hwsrot = np.ceil(hws * np.abs(np.cos(angle_rad)) +
+                     hws * np.abs(np.sin(angle_rad)))
+    hwsrot2 = np.ceil(hwsrot * np.abs(np.cos(angle_rad)) +
+                      hwsrot * np.abs(np.sin(angle_rad)))
+    rotBorder1 = hwsrot2 - hws
+    rotBorder2 = rotBorder1 + hws + hws
+
+    template = img[r-hwsrot:r+hwsrot, c-hwsrot:c+hwsrot]
+    templateRot = nd.interpolation.rotate(template, angle, order=1)
+    templateRot = templateRot[rotBorder1:rotBorder2, rotBorder1:rotBorder2]
+
+    return templateRot
+
+def get_distance_to_nearest_keypoint(x1, y1, shape):
+    ''' Return full-res matrix with distance to nearest keypoint in pixels '''
+    seed = np.zeros(shape, dtype=bool)
+    seed[np.uint16(y1), np.uint16(x1)] = True
+    dist = nd.distance_transform_edt(~seed,
+                                    return_distances=True,
+                                    return_indices=False)
+    return dist
 
 class SeaIceDrift(object):
     def __init__(self, filename1, filename2):

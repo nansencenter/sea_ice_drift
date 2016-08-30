@@ -12,5 +12,9 @@ __all__ = [
     'domain_filter',
     'max_drift_filter',
     'lstsq_filter',
+    'x2y2_interpolation_poly',
+    'x2y2_interpolation_near',
+    'get_rotated_template',
+    'get_distance_to_nearest_keypoint',
     'SeaIceDrift',
 ]
