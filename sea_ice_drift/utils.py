@@ -1,7 +1,6 @@
 import time
 import numpy as np
 import cv2
-
 from nansat import Nansat, Domain
 
 def reproject_gcp_to_stere(n):
@@ -20,26 +19,32 @@ def get_uint8_image(image, vmin, vmax):
     uint8Image[uint8Image < 0] = 0
     uint8Image[uint8Image > 255] = 255
     uint8Image[~np.isfinite(uint8Image)] = 0
-    
+
     return uint8Image.astype('uint8')
 
-def find_key_points(image, detector=cv2.ORB,
+def find_key_points(image, detector='ORB',
                     edgeThreshold=34,
                     nFeatures=100000,
                     nLevels=7,
                     patchSize=34,
                     **kwargs):
     ''' Initiate detector and find key points on an image '''
-
-    detector = detector()
-    detector.setInt('edgeThreshold', edgeThreshold)
-    detector.setInt('nFeatures', nFeatures)
-    detector.setInt('nLevels', nLevels)
-    detector.setInt('patchSize', patchSize)
+    if detector=='ORB' and cv2.__version__.startswith('3.'):
+        detector = cv2.ORB_create()
+        detector.setEdgeThreshold(edgeThreshold)
+        detector.setMaxFeatures(nFeatures)
+        detector.setNLevels(nLevels)
+        detector.setPatchSize(patchSize)
+    elif detector=='ORB':
+        detector = cv2.ORB()
+        detector.setInt('edgeThreshold', edgeThreshold)
+        detector.setInt('nFeatures', nFeatures)
+        detector.setInt('nLevels', nLevels)
+        detector.setInt('patchSize', patchSize)
     print 'ORB detector initiated'
 
     keyPoints, descriptors = detector.detectAndCompute(image, None)
-    print 'Key point found'
+    print 'Key points found: %d' % len(keyPoints)
     return keyPoints, descriptors
 
 
@@ -73,7 +78,7 @@ def get_match_coords(keyPoints1, descriptors1,
 
     return x1, y1, x2, y2
 
-def get_displacement_km(n1, x1, y1, n2, x2, y2):
+def get_displacement_km(n1, x1, y1, n2, x2, y2, ll2km='domain'):
     ''' Find displacement in kilometers using Domain'''
     lon1, lat1 = n1.transform_points(x1, y1)
     lon2, lat2 = n2.transform_points(x2, y2)
@@ -93,17 +98,27 @@ def get_displacement_pix(n1, x1, y1, n2, x2, y2):
 
     return x2n1 - x1, y2n1 - y1
 
-def remove_too_large(u, v, lon1, lat1, lon2, lat2, maxSpeed):
-    ''' filter too high u, v '''
-    gpi = np.hypot(u, v) < maxSpeed
-    u = u[gpi]
-    v = v[gpi]
-    lon1 = lon1[gpi]
-    lat1 = lat1[gpi]
-    lon2 = lon2[gpi]
-    lat2 = lat2[gpi]
+def domain_filter(n, keyPoints, descr, domain, domainMargin=0):
+    ''' Finds keypoints from Nansat objects <n> which are within <domain>'''
+    cols = [kp.pt[0] for kp in keyPoints]
+    rows = [kp.pt[1] for kp in keyPoints]
+    lon, lat = n.transform_points(cols, rows, 0)
+    colsD, rowsD = domain.transform_points(lon, lat, 1)
+    gpi = ((colsD >= 0 + domainMargin) *
+           (rowsD >= 0 + domainMargin) *
+           (colsD <= domain.shape()[1] - domainMargin) *
+           (rowsD <= domain.shape()[0] - domainMargin))
 
-    return u, v, lon1, lat1, lon2, lat2
+    print 'Domain filter: %d -> %d' % (len(keyPoints), len(gpi[gpi]))
+    return list(np.array(keyPoints)[gpi]), descr[gpi]
+
+def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=20):
+    ''' Filter out too high drift (km) '''
+    u, v = get_displacement_km(n1, x1, y1, n2, x2, y2)
+    gpi = np.hypot(u,v) <= maxDrift
+
+    print 'MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi]))
+    return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
 def lstsq_filter(x1, y1, x2, y2, psi=600, **kwargs):
     ''' Remove vectors that don't fit the model x1 = f(x2, y2)^n
@@ -131,27 +146,56 @@ def lstsq_filter(x1, y1, x2, y2, psi=600, **kwargs):
     yErr = (y1 - y1sim) ** 2
 
     # find pixels with error below psi
-    goodPixels = (xErr < psi ** 2) * (yErr < psi ** 2)
+    gpi = (xErr < psi ** 2) * (yErr < psi ** 2)
 
-    return goodPixels
+    print 'LSTSQ filter: %d -> %d' % (len(x1), len(gpi[gpi]))
+    return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
+def get_denoised_object(filename, bandName, factor):
+    from sentinel1denoised.S1_EW_GRD_NoiseCorrection import Sentinel1Image
+    s = Sentinel1Image(filename)
+    s.add_denoised_band('sigma0_HV')
+    s.resize(factor, eResampleAlg=-1)
+    img = s[bandName + '_denoised']
 
-class SeaIceDrift(Nansat):
-    def get_drift_vectors(n1, n2, bandName='sigma0_HV',
+    n = Nansat(domain=s)
+    n.add_band(img, parameters=s.get_metadata(bandID=bandName))
+    n.set_metadata(s.get_metadata())
+
+    return n
+
+class SeaIceDrift(object):
+    def __init__(self, filename1, filename2):
+        self.filename1 = filename1
+        self.filename2 = filename2
+
+    def feature_tracking(self, bandName='sigma0_HV',
                           factor=0.5, vmin=0, vmax=0.013,
-                          maxSpeed=0.5, **kwargs):
-        ''' Estimate drift of features between two images '''
-        # increase speed
+                          domainMargin=10, maxDrift=20,
+                          denoise=False, dB=False, **kwargs):
+        ''' Find starting and ending point of drift using feature tracking '''
+        if denoise:
+            # open, denoise and reduce size
+            n1 = get_denoised_object(self.filename1, bandName, factor)
+            n2 = get_denoised_object(self.filename2, bandName, factor)
+        else:
+            # open and reduce size
+            n1 = Nansat(self.filename1)
+            n2 = Nansat(self.filename2)
+            n1.resize(factor, eResampleAlg=-1)
+            n2.resize(factor, eResampleAlg=-1)
+
+        # increase accuracy of coordinate transfomation
         n1 = reproject_gcp_to_stere(n1)
         n2 = reproject_gcp_to_stere(n2)
-
-        # increase speed
-        n1.resize(factor, eResampleAlg=-1)
-        n2.resize(factor, eResampleAlg=-1)
 
         # get matrices with data
         img1 = n1[bandName]
         img2 = n2[bandName]
+
+        if not denoise and dB:
+            img1 = 10 * np.log10(img1)
+            img2 = 10 * np.log10(img2)
 
         # convert to 0 - 255
         img1 = get_uint8_image(img1, vmin, vmax)
@@ -161,31 +205,32 @@ class SeaIceDrift(Nansat):
         kp1, descr1 = find_key_points(img1, **kwargs)
         kp2, descr2 = find_key_points(img2, **kwargs)
 
+        # filter keypoints by Domain
+        kp1, descr1 = domain_filter(n1, kp1, descr1, n2, domainMargin)
+        kp2, descr2 = domain_filter(n2, kp2, descr2, n1, domainMargin)
+
         # find coordinates of matching key points
         x1, y1, x2, y2 = get_match_coords(kp1, descr1, kp2, descr2, **kwargs)
 
-        # filter out inconsistent pairs
-        goodPixels = lstsq_filter(x1, y1, x2, y2, **kwargs)
-        x1 = x1[goodPixels]
-        y1 = y1[goodPixels]
-        x2 = x2[goodPixels]
-        y2 = y2[goodPixels]
+        # filter out pair with too high drift
+        x1, y1, x2, y2 = max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift)
 
+        # filter out inconsistent pairs
+        x1, y1, x2, y2 = lstsq_filter(x1, y1, x2, y2, **kwargs)
+
+        return n1, img1, x1, y1, n2, img2, x2, y2
+
+    def get_drift_vectors(self, n1, x1, y1, n2, x2, y2, ll2km='domain'):
         # convert x,y to lon, lat
         lon1, lat1 = n1.transform_points(x1, y1)
         lon2, lat2 = n2.transform_points(x2, y2)
 
         # find displacement in kilometers
-        u, v = get_displacement_km(n1, x1, y1, n2, x2, y2)
+        u, v = get_displacement_km(n1, x1, y1, n2, x2, y2, ll2km=ll2km)
 
         # convert to speed in m/s
         dt = n2.time_coverage_start - n1.time_coverage_start
         u = u * 1000 / dt.total_seconds()
         v = v * 1000 / dt.total_seconds()
-
-        # filter too high u, v
-        u, v, lon1, lat1, lon2, lat2 = remove_too_large(u, v, lon1, lat1,
-                                                              lon2, lat2,
-                                                              maxSpeed)
 
         return u, v, lon1, lat1, lon2, lat2
