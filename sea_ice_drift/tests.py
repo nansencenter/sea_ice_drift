@@ -14,11 +14,12 @@ from sea_ice_drift import (SeaIceDrift,
                            get_uint8_image,
                            find_key_points,
                            get_match_coords,
+                           domain_filter,
+                           max_drift_filter,
                            lstsq_filter,
                            reproject_gcp_to_stere,
                            get_displacement_km,
-                           get_displacement_pix,
-                           remove_too_large)
+                           get_displacement_pix)
 
 class SeaIceDriftFuncTests(unittest.TestCase):
     def setUp(self):
@@ -105,6 +106,44 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         plt.close('all')
         self.assertTrue(len(u) == len(x1))
 
+    def test_domain_filter(self):
+        ''' Shall leave keypoints from second image withn domain of the first '''
+        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
+        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
+
+        keyPoints2f, descr2f = domain_filter(self.n2, keyPoints2, descr2,
+                                             self.n1, domainMargin=100)
+
+        # plot dots
+        cols1 = [kp.pt[0] for kp in keyPoints1]
+        rows1 = [kp.pt[1] for kp in keyPoints1]
+        lon1, lat1 = self.n1.transform_points(cols1, rows1, 0)
+        cols2 = [kp.pt[0] for kp in keyPoints2f]
+        rows2 = [kp.pt[1] for kp in keyPoints2f]
+        lon2, lat2 = self.n2.transform_points(cols2, rows2, 0)
+        plt.plot(lon1, lat1, '.')
+        plt.plot(lon2, lat2, '.')
+        plt.savefig('sea_ice_drift_tests_03_domain_filter.png')
+        plt.close('all')
+
+        self.assertTrue(len(descr2f) < len(descr2))
+
+    def test_max_drift_filter(self):
+        '''Shall keep only slow drift '''
+        maxSpeed = 30 # km
+        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
+        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
+        x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
+                                          keyPoints2, descr2)
+        x1f, y1f, x2f, y2f = max_drift_filter(self.n1, x1, y1,
+                                          self.n2, x2, y2)
+
+        self.assertTrue(len(x1f) < len(x1))
+
     def test_lstsq_filter(self):
         ''' Shall filter out not matching points '''
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
@@ -114,28 +153,8 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
 
-        goodPixels = lstsq_filter(x1, y1, x2, y2)
-        self.assertTrue(len(goodPixels) > len(goodPixels[goodPixels]))
-
-    def test_remove_too_large(self):
-        '''Shall keep only slow drift '''
-        maxSpeed = 30 # km
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
-        x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
-                                          keyPoints2, descr2)
-        u, v = get_displacement_km(self.n1, x1, y1, self.n2, x2, y2)
-        lon1, lat1 = self.n1.transform_points(x1, y1)
-        lon2, lat2 = self.n2.transform_points(x2, y2)
-        uf, vf, lon1f, lat1f, lon2f, lat2f = remove_too_large(u, v,
-                                                              lon1, lat1,
-                                                              lon2, lat2,
-                                                              maxSpeed)
-
-        self.assertTrue(np.hypot(uf, vf).max() <= maxSpeed)
-        self.assertTrue(len(uf) < len(u))
+        x1f, y1f, x2f, y2f = lstsq_filter(x1, y1, x2, y2)
+        self.assertTrue(len(x1) > len(x1f))
 
 
 class SeaIceDriftClassTests(unittest.TestCase):
@@ -144,17 +163,22 @@ class SeaIceDriftClassTests(unittest.TestCase):
         testDir = os.getenv('ICE_DRIFT_TEST_DATA_DIR')
         if testDir is None:
             sys.exit('ICE_DRIFT_TEST_DATA_DIR is not defined')
-        testFiles = sorted(glob.glob(os.path.join(testDir, 'S1A_*tif')))
-        if len(testFiles) < 2:
+        self.testFiles = sorted(glob.glob(os.path.join(testDir, 'S1A_*tif')))
+        if len(self.testFiles) < 2:
             sys.exit('Not enough test files in %s' % testDir)
-        self.n1 = SeaIceDrift(testFiles[0])
-        self.n2 = Nansat(testFiles[1])
 
-    def test_get_drift_vectors(self):
+    def test_feature_tracking(self):
         ''' Shall use all developed functions '''
-        u, v, lon1, lat1, lon2, lat2 = self.n1.get_drift_vectors(self.n2)
-        plt.quiver(lon1, lat1, u, v)
-        plt.savefig('sea_ice_drift_tests_02_quiver_lonlat_class.png')
+        sid = SeaIceDrift(self.testFiles[0], self.testFiles[1])
+        n1, img1, x1, y1, n2, img2, x2, y2 = sid.feature_tracking()
+        u, v, lon1, lat1, lon2, lat2 = sid.get_drift_vectors(n1, x1, y1,
+                                                             n2, x2, y2)
+
+        plt.plot(lon1, lat1, '.')
+        plt.plot(lon2, lat2, '.')
+        plt.quiver(lon1, lat1, u, v, color='r')
+                   #angles='xy', scale_units='xy', scale=1, width=0.002)
+        plt.savefig('sea_ice_drift_tests_04_quiver_lonlat_class.png')
         plt.close('all')
 
 
