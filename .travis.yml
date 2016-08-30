@@ -22,7 +22,7 @@ before_install:
 
 install:
   - conda update -q --yes conda
-  - conda install -q --yes -c conda-forge numpy scipy matplotlib nose pillow basemap netcdf4 gdal opencv=OPENCV_VERSION
+  - conda install -q --yes -c conda-forge numpy scipy matplotlib nose pillow basemap netcdf4 gdal opencv=$OPENCV_VERSION
   - export GDAL_DATA=/home/vagrant/miniconda/share/gdal/
   - export GEOS_DIR=/home/vagrant/miniconda/
   - python -c 'import gdal; print gdal.__file__'
