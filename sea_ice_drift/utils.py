@@ -44,7 +44,7 @@ def find_key_points(image, detector='ORB',
     print 'ORB detector initiated'
 
     keyPoints, descriptors = detector.detectAndCompute(image, None)
-    print 'Key point found'
+    print 'Key points found: %d' % len(keyPoints)
     return keyPoints, descriptors
 
 
@@ -109,6 +109,7 @@ def domain_filter(n, keyPoints, descr, domain, domainMargin=0):
            (colsD <= domain.shape()[1] - domainMargin) *
            (rowsD <= domain.shape()[0] - domainMargin))
 
+    print 'Domain filter: %d -> %d' % (len(keyPoints), len(gpi[gpi]))
     return list(np.array(keyPoints)[gpi]), descr[gpi]
 
 def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=20):
@@ -116,6 +117,7 @@ def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=20):
     u, v = get_displacement_km(n1, x1, y1, n2, x2, y2)
     gpi = np.hypot(u,v) <= maxDrift
 
+    print 'MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi]))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
 def lstsq_filter(x1, y1, x2, y2, psi=600, **kwargs):
@@ -146,6 +148,7 @@ def lstsq_filter(x1, y1, x2, y2, psi=600, **kwargs):
     # find pixels with error below psi
     gpi = (xErr < psi ** 2) * (yErr < psi ** 2)
 
+    print 'LSTSQ filter: %d -> %d' % (len(x1), len(gpi[gpi]))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
 def get_denoised_object(filename, bandName, factor):
