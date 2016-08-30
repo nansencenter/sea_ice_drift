@@ -177,7 +177,6 @@ class SeaIceDriftClassTests(unittest.TestCase):
         plt.plot(lon1, lat1, '.')
         plt.plot(lon2, lat2, '.')
         plt.quiver(lon1, lat1, u, v, color='r')
-                   #angles='xy', scale_units='xy', scale=1, width=0.002)
         plt.savefig('sea_ice_drift_tests_04_quiver_lonlat_class.png')
         plt.close('all')
 
