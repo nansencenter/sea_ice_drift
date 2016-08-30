@@ -36,6 +36,7 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         self.img2 = self.n2['sigma0_HV']
         self.imgMin = 0.001
         self.imgMax = 0.013
+        self.nFeatures = 10000
 
     def test_reproject_gcp_to_stere(self):
         ''' Shall change projection of GCPs to stere '''
@@ -68,8 +69,8 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         ''' Shall find matching coordinates '''
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
         img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
         self.assertTrue(len(keyPoints1) > len(x1))
@@ -79,8 +80,8 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         ''' Shall find matching coordinates and plot quiver in lon/lat'''
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
         img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
         u, v = get_displacement_km(self.n1, x1, y1, self.n2, x2, y2)
@@ -95,8 +96,8 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         ''' Shall find matching coordinates and plot quiver in pixel/line'''
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
         img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
         u, v = get_displacement_pix(self.n1, x1, y1, self.n2, x2, y2)
@@ -110,8 +111,8 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         ''' Shall leave keypoints from second image withn domain of the first '''
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
         img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
 
         keyPoints2f, descr2f = domain_filter(self.n2, keyPoints2, descr2,
                                              self.n1, domainMargin=100)
@@ -135,8 +136,8 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         maxSpeed = 30 # km
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
         img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
         x1f, y1f, x2f, y2f = max_drift_filter(self.n1, x1, y1,
@@ -148,8 +149,8 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         ''' Shall filter out not matching points '''
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
         img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=10000)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=10000)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
 

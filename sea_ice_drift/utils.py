@@ -1,7 +1,6 @@
 import time
 import numpy as np
 import cv2
-
 from nansat import Nansat, Domain
 
 def reproject_gcp_to_stere(n):
@@ -23,19 +22,25 @@ def get_uint8_image(image, vmin, vmax):
 
     return uint8Image.astype('uint8')
 
-def find_key_points(image, detector=cv2.ORB,
+def find_key_points(image, detector='ORB',
                     edgeThreshold=34,
                     nFeatures=100000,
                     nLevels=7,
                     patchSize=34,
                     **kwargs):
     ''' Initiate detector and find key points on an image '''
-
-    detector = detector()
-    detector.setInt('edgeThreshold', edgeThreshold)
-    detector.setInt('nFeatures', nFeatures)
-    detector.setInt('nLevels', nLevels)
-    detector.setInt('patchSize', patchSize)
+    if detector=='ORB' and cv2.__version__.startswith('3.'):
+        detector = cv2.ORB_create()
+        detector.setEdgeThreshold(edgeThreshold)
+        detector.setMaxFeatures(nFeatures)
+        detector.setNLevels(nLevels)
+        detector.setPatchSize(patchSize)
+    elif detector=='ORB':
+        detector = cv2.ORB()
+        detector.setInt('edgeThreshold', edgeThreshold)
+        detector.setInt('nFeatures', nFeatures)
+        detector.setInt('nLevels', nLevels)
+        detector.setInt('patchSize', patchSize)
     print 'ORB detector initiated'
 
     keyPoints, descriptors = detector.detectAndCompute(image, None)
