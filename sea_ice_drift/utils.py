@@ -126,7 +126,7 @@ def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=20):
     print 'MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi]))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
-def lstsq_filter(x1, y1, x2, y2, psi=600, **kwargs):
+def lstsq_filter(x1, y1, x2, y2, psi=200, **kwargs):
     ''' Remove vectors that don't fit the model x1 = f(x2, y2)^n
 
     Fit the model x1 = f(x2, y2)^n using least squares method
@@ -157,13 +157,13 @@ def lstsq_filter(x1, y1, x2, y2, psi=600, **kwargs):
     print 'LSTSQ filter: %d -> %d' % (len(x1), len(gpi[gpi]))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
-def get_denoised_object(filename, bandName, factor):
+def get_denoised_object(filename, bandName, factor, **kwargs):
     ''' Use sentinel1denoised and preform thermal noise removal
     Import is done within the function to make the dependency not so strict
     '''
     from sentinel1denoised.S1_EW_GRD_NoiseCorrection import Sentinel1Image
     s = Sentinel1Image(filename)
-    s.add_denoised_band('sigma0_HV')
+    s.add_denoised_band('sigma0_HV', **kwargs)
     s.resize(factor, eResampleAlg=-1)
     img = s[bandName + '_denoised']
 
@@ -247,8 +247,8 @@ class SeaIceDrift(object):
         ''' Find starting and ending point of drift using feature tracking '''
         if denoise:
             # open, denoise and reduce size
-            n1 = get_denoised_object(self.filename1, bandName, factor)
-            n2 = get_denoised_object(self.filename2, bandName, factor)
+            n1 = get_denoised_object(self.filename1, bandName, factor, **kwargs)
+            n2 = get_denoised_object(self.filename2, bandName, factor, **kwargs)
         else:
             # open and reduce size
             n1 = Nansat(self.filename1)
