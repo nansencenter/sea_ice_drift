@@ -151,10 +151,10 @@ def lstsq_filter(x1, y1, x2, y2, psi=600, **kwargs):
     print 'LSTSQ filter: %d -> %d' % (len(x1), len(gpi[gpi]))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
-def get_denoised_object(filename, bandName, factor):
+def get_denoised_object(filename, bandName, factor, **kwargs):
     from sentinel1denoised.S1_EW_GRD_NoiseCorrection import Sentinel1Image
     s = Sentinel1Image(filename)
-    s.add_denoised_band('sigma0_HV')
+    s.add_denoised_band('sigma0_HV', **kwargs)
     s.resize(factor, eResampleAlg=-1)
     img = s[bandName + '_denoised']
 
@@ -176,8 +176,8 @@ class SeaIceDrift(object):
         ''' Find starting and ending point of drift using feature tracking '''
         if denoise:
             # open, denoise and reduce size
-            n1 = get_denoised_object(self.filename1, bandName, factor)
-            n2 = get_denoised_object(self.filename2, bandName, factor)
+            n1 = get_denoised_object(self.filename1, bandName, factor, **kwargs)
+            n2 = get_denoised_object(self.filename2, bandName, factor, **kwargs)
         else:
             # open and reduce size
             n1 = Nansat(self.filename1)
