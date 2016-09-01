@@ -16,5 +16,8 @@ __all__ = [
     'x2y2_interpolation_near',
     'get_rotated_template',
     'get_distance_to_nearest_keypoint',
+    'get_initial_rotation',
+    'rotate_and_match',
+    'use_mcc',
     'SeaIceDrift',
 ]

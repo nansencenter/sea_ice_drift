@@ -89,13 +89,25 @@ def get_displacement_km(n1, x1, y1, n2, x2, y2, ll2km='domain'):
     lon1, lat1 = n1.transform_points(x1, y1)
     lon2, lat2 = n2.transform_points(x2, y2)
 
-    d = Domain('+proj=stere +lon_0=%f +lat_0=%f +no_defs' % (lon1.mean(), lat1.mean()),
-                '-te -100000 -100000 100000 100000 -tr 1000 1000')
+    if ll2km == 'domain':
+        d = Domain('+proj=stere +lon_0=%f +lat_0=%f +no_defs' % (lon1.mean(),
+                                                                 lat1.mean()),
+                    '-te -100000 -100000 100000 100000 -tr 1000 1000')
+        x1d, y1d = d.transform_points(lon1, lat1, 1)
+        x2d, y2d = d.transform_points(lon2, lat2, 1)
+        dx = x2d - x1d
+        dy = y1d - y2d
+    elif ll2km == 'equirec':
+        # U,V Equirectangular
+        dlong = (lon1 - lon2)*np.pi/180;
+        dlat  = (lat1 - lat2)*np.pi/180;
+        slat  = (lat1 + lat2)*np.pi/180;
+        p1 = (dlong)*np.cos(0.5*slat)
+        p2 = (dlat)
+        dx = 6371.000 * p1
+        dy = 6371.000 * p2
 
-    x1d, y1d = d.transform_points(lon1, lat1, 1)
-    x2d, y2d = d.transform_points(lon2, lat2, 1)
-
-    return x2d - x1d, y1d - y2d
+    return dx, dy
 
 def get_displacement_pix(n1, x1, y1, n2, x2, y2):
     ''' Find displacement in pixels of the first image'''
@@ -211,7 +223,7 @@ def x2y2_interpolation_near(x1, y1, x2, y2, x1grd, y1grd, method='linear'):
 
 def get_rotated_template(img, r, c, size, angle, order=1):
     ''' Get rotated template of a given size '''
-    hws = size / 2
+    hws = size / 2.
     angle_rad = np.radians(angle)
     hwsrot = np.ceil(hws * np.abs(np.cos(angle_rad)) +
                      hws * np.abs(np.sin(angle_rad)))
@@ -220,7 +232,7 @@ def get_rotated_template(img, r, c, size, angle, order=1):
     rotBorder1 = hwsrot2 - hws
     rotBorder2 = rotBorder1 + hws + hws
 
-    template = img[r-hwsrot:r+hwsrot, c-hwsrot:c+hwsrot]
+    template = img[r-hwsrot:r+hwsrot+1, c-hwsrot:c+hwsrot+1]
     templateRot = nd.interpolation.rotate(template, angle, order=1)
     templateRot = templateRot[rotBorder1:rotBorder2, rotBorder1:rotBorder2]
 
@@ -234,6 +246,51 @@ def get_distance_to_nearest_keypoint(x1, y1, shape):
                                     return_distances=True,
                                     return_indices=False)
     return dist
+
+def get_initial_rotation(n1, n2):
+    ''' Calcalate angle of rotation between two images'''
+    corners_n2_lons, corners_n2_lats = n2.get_corners()
+    corner0_n2_x1, corner0_n2_y1 = n1.transform_points([corners_n2_lons[0]], [corners_n2_lats[0]], 1)
+    corner1_n2_x1, corner1_n2_y1 = n1.transform_points([corners_n2_lons[1]], [corners_n2_lats[1]], 1)
+    b = corner1_n2_x1 - corner0_n2_x1
+    a = corner1_n2_y1 - corner0_n2_y1
+    alpha = np.degrees(np.arctan2(b, a)[0])
+    return alpha
+
+def rotate_and_match(img1, x, y, img_size, image, alpha0=0, angles=[0],
+                     mtype=cv2.TM_CCOEFF_NORMED):
+    best_r = -np.inf
+    for angle in angles:
+        template = get_rotated_template(img1, y, x, img_size, angle-alpha0)
+        result = cv2.matchTemplate(image, template.astype(np.uint8), mtype)
+        ij = np.unravel_index(np.argmax(result), result.shape)
+        if result.max() > best_r:
+            best_r = result.max()
+            best_a = angle
+            best_result = result
+            best_template = template
+            best_ij = ij
+
+    dy = best_ij[0] - (image.shape[0] - template.shape[0]) / 2.
+    dx = best_ij[1] - (image.shape[1] - template.shape[1]) / 2.
+
+    return best_r, best_a, dx, dy, best_result, best_template
+
+def use_mcc(x1, y1, x2grd_fg, y2grd_fg, border, img_size, img1, img2, angles=[0], alpha0=0):
+    ix2 = x2grd_fg[y1, x1]
+    iy2 = y2grd_fg[y1, x1]
+    brd = border[y1, x1]
+    hws = int(img_size / 2.)
+    image = img2[iy2-hws-brd:iy2+hws+brd+1, ix2-hws-brd:ix2+hws+brd+1]
+    if np.any(np.array(image.shape) < (img_size+brd+brd)):
+        return np.nan, np.nan, np.nan, np.nan
+    r,a,dx,dy,_,_ = rotate_and_match(img1, x1, y1, img_size, image, alpha0, angles)
+
+    x2 = ix2 + dx - 1
+    y2 = iy2 + dy - 1
+
+    return x2, y2, r, a
+
 
 class SeaIceDrift(object):
     def __init__(self, filename1, filename2):
