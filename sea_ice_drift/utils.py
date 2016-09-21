@@ -59,6 +59,7 @@ def get_match_coords(keyPoints1, descriptors1,
                                     matcher=cv2.BFMatcher,
                                     norm=cv2.NORM_HAMMING,
                                     ratio_test=0.75,
+                                    verbose=True,
                                     **kwargs):
     ''' Filter matching keypoints and convert to X,Y coordinates '''
     t0 = time.time()
@@ -66,7 +67,8 @@ def get_match_coords(keyPoints1, descriptors1,
     bf = matcher(norm)
     matches = bf.knnMatch(descriptors1, descriptors2, k=2)
     t1 = time.time()
-    print 'Keypoints matched', t1 - t0
+    if verbose:
+        print 'Keypoints matched', t1 - t0
 
     # Apply ratio test from Lowe
     good = []
@@ -74,7 +76,8 @@ def get_match_coords(keyPoints1, descriptors1,
         if m.distance < ratio_test*n.distance:
             good.append(m)
     t2 = time.time()
-    print 'Ratio test %f found %d keypoints in %f' % (ratio_test, len(good), t2-t1)
+    if verbose:
+        print 'Ratio test %f found %d keypoints in %f' % (ratio_test, len(good), t2-t1)
 
     # Coordinates for start, end point of vectors
     x1 = np.array([keyPoints1[m.queryIdx].pt[0] for m in good])
@@ -98,14 +101,19 @@ def get_displacement_km(n1, x1, y1, n2, x2, y2, ll2km='domain'):
         dx = x2d - x1d
         dy = y1d - y2d
     elif ll2km == 'equirec':
-        # U,V Equirectangular
-        dlong = (lon1 - lon2)*np.pi/180;
-        dlat  = (lat1 - lat2)*np.pi/180;
-        slat  = (lat1 + lat2)*np.pi/180;
-        p1 = (dlong)*np.cos(0.5*slat)
-        p2 = (dlat)
-        dx = 6371.000 * p1
-        dy = 6371.000 * p2
+        dx, dy = get_displacement_km_equirec(lon1, lat1, lon2, lat2)
+
+    return dx, dy
+
+def get_displacement_km_equirec(lon1, lat1, lon2, lat2):
+    # U,V Equirectangular
+    dlong = (lon2 - lon1)*np.pi/180;
+    dlat  = (lat2 - lat1)*np.pi/180;
+    slat  = (lat1 + lat2)*np.pi/180;
+    p1 = (dlong)*np.cos(0.5*slat)
+    p2 = (dlat)
+    dx = 6371.000 * p1
+    dy = 6371.000 * p2
 
     return dx, dy
 
@@ -138,7 +146,7 @@ def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=20):
     print 'MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi]))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
-def lstsq_filter(x1, y1, x2, y2, psi=200, **kwargs):
+def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, **kwargs):
     ''' Remove vectors that don't fit the model x1 = f(x2, y2)^n
 
     Fit the model x1 = f(x2, y2)^n using least squares method
@@ -148,23 +156,14 @@ def lstsq_filter(x1, y1, x2, y2, psi=200, **kwargs):
         x1, y1, x2, y2 : coordinates of start and end of displacement [pixels]
         psi : threshold error between actual and simulated x1 [pixels]
     '''
-    # stack together target coordinates
-    A = np.vstack([np.ones(len(x2)), x2, y2, x2**2, y2**2, x2*y2, x2**3, y2**3]).T
-
-    # find B in x1 = B * [x2, y2]
-    Bx = np.linalg.lstsq(A, x1)[0]
-    By = np.linalg.lstsq(A, y1)[0]
-
-    # calculate simulated x1sim = B * [x2, y2]
-    x1sim = np.dot(A, Bx)
-    y1sim = np.dot(A, By)
+    # interpolate using N-order polynomial
+    x2sim, y2sim = x2y2_interpolation_poly(x1, y1, x2, y2, x1, y1, order=order)
 
     # find error between actual and simulated x1
-    xErr = (x1 - x1sim) ** 2
-    yErr = (y1 - y1sim) ** 2
+    err = np.hypot(x2 - x2sim, y2 - y2sim)
 
     # find pixels with error below psi
-    gpi = (xErr < psi ** 2) * (yErr < psi ** 2)
+    gpi = err < psi
 
     print 'LSTSQ filter: %d -> %d' % (len(x1), len(gpi[gpi]))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
@@ -262,6 +261,8 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0=0, angles=[0],
     best_r = -np.inf
     for angle in angles:
         template = get_rotated_template(img1, y, x, img_size, angle-alpha0)
+        if template.shape[0] < img_size or template.shape[1] < img_size:
+            return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
         result = cv2.matchTemplate(image, template.astype(np.uint8), mtype)
         ij = np.unravel_index(np.argmax(result), result.shape)
         if result.max() > best_r:
@@ -281,6 +282,11 @@ def use_mcc(x1, y1, x2grd_fg, y2grd_fg, border, img_size, img1, img2, angles=[0]
     iy2 = y2grd_fg[y1, x1]
     brd = border[y1, x1]
     hws = int(img_size / 2.)
+    if (ix2 < hws+brd
+        or ix2>img2.shape[1]-hws-brd-1
+        or iy2 < hws+brd
+        or iy2>img2.shape[0]-hws-brd-1):
+        return np.nan, np.nan, np.nan, np.nan
     image = img2[iy2-hws-brd:iy2+hws+brd+1, ix2-hws-brd:ix2+hws+brd+1]
     if np.any(np.array(image.shape) < (img_size+brd+brd)):
         return np.nan, np.nan, np.nan, np.nan

@@ -19,5 +19,6 @@ __all__ = [
     'get_initial_rotation',
     'rotate_and_match',
     'use_mcc',
+    'get_displacement_km_equirec',
     'SeaIceDrift',
 ]
