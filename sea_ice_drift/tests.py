@@ -21,17 +21,17 @@ from sea_ice_drift import (SeaIceDrift,
                            get_displacement_km,
                            get_displacement_pix)
 
-class SeaIceDriftFuncTests(unittest.TestCase):
+class SeaIceDriftLibTests(unittest.TestCase):
     def setUp(self):
         ''' Load test data '''
         testDir = os.getenv('ICE_DRIFT_TEST_DATA_DIR')
         if testDir is None:
             sys.exit('ICE_DRIFT_TEST_DATA_DIR is not defined')
-        testFiles = sorted(glob.glob(os.path.join(testDir, 'S1A_*tif')))
-        if len(testFiles) < 2:
+        self.testFiles = sorted(glob.glob(os.path.join(testDir, 'S1A_*tif')))
+        if len(self.testFiles) < 2:
             sys.exit('Not enough test files in %s' % testDir)
-        self.n1 = Nansat(testFiles[0])
-        self.n2 = Nansat(testFiles[1])
+        self.n1 = Nansat(self.testFiles[0])
+        self.n2 = Nansat(self.testFiles[1])
         self.img1 = self.n1['sigma0_HV']
         self.img2 = self.n2['sigma0_HV']
         self.imgMin = 0.001
@@ -57,24 +57,6 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         self.assertEqual(imageUint8.dtype, np.uint8)
         self.assertEqual(imageUint8.min(), 0)
         self.assertEqual(imageUint8.max(), 255)
-
-    def test_find_key_points(self):
-        ''' Shall find key points using default values '''
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1)
-
-        self.assertTrue(len(keyPoints1) > 1000)
-
-    def test_get_match_coords(self):
-        ''' Shall find matching coordinates '''
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
-        x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
-                                          keyPoints2, descr2)
-        self.assertTrue(len(keyPoints1) > len(x1))
-        self.assertTrue(len(keyPoints2) > len(x2))
 
     def test_get_displacement_km(self):
         ''' Shall find matching coordinates and plot quiver in lon/lat'''
@@ -106,6 +88,26 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         plt.savefig('sea_ice_drift_tests_02_quiver_pixlin.png')
         plt.close('all')
         self.assertTrue(len(u) == len(x1))
+
+
+class SeaIceDriftFTLibTests(SeaIceDriftLibTests):
+    def test_find_key_points(self):
+        ''' Shall find key points using default values '''
+        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
+        keyPoints1, descr1 = find_key_points(img1)
+
+        self.assertTrue(len(keyPoints1) > 1000)
+
+    def test_get_match_coords(self):
+        ''' Shall find matching coordinates '''
+        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
+        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
+        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
+        x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
+                                          keyPoints2, descr2)
+        self.assertTrue(len(keyPoints1) > len(x1))
+        self.assertTrue(len(keyPoints2) > len(x2))
 
     def test_domain_filter(self):
         ''' Shall leave keypoints from second image withn domain of the first '''
@@ -158,16 +160,7 @@ class SeaIceDriftFuncTests(unittest.TestCase):
         self.assertTrue(len(x1) > len(x1f))
 
 
-class SeaIceDriftClassTests(unittest.TestCase):
-    def setUp(self):
-        ''' Load test data '''
-        testDir = os.getenv('ICE_DRIFT_TEST_DATA_DIR')
-        if testDir is None:
-            sys.exit('ICE_DRIFT_TEST_DATA_DIR is not defined')
-        self.testFiles = sorted(glob.glob(os.path.join(testDir, 'S1A_*tif')))
-        if len(self.testFiles) < 2:
-            sys.exit('Not enough test files in %s' % testDir)
-
+class SeaIceDriftClassTests(SeaIceDriftLibTests):
     def test_feature_tracking(self):
         ''' Shall use all developed functions '''
         sid = SeaIceDrift(self.testFiles[0], self.testFiles[1])
