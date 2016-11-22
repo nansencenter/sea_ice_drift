@@ -96,8 +96,8 @@ def use_mcc(x1, y1, x2grd_fg, y2grd_fg, border, img_size, img1, img2, angles=[0]
         return np.nan, np.nan, np.nan, np.nan
     r,a,dx,dy,_,_ = rotate_and_match(img1, x1, y1, img_size, image, alpha0, angles)
 
-    x2 = ix2 + dx - 1
-    y2 = iy2 + dy - 1
+    x2 = ix2 + dx
+    y2 = iy2 + dy
 
     return x2, y2, r, a
 

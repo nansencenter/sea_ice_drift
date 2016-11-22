@@ -18,7 +18,8 @@ import numpy as np
 
 from nansat import Nansat
 
-from sea_ice_drift.lib import (get_denoised_object,
+from sea_ice_drift.lib import (get_n_img,
+                               get_denoised_object,
                                reproject_gcp_to_stere,
                                get_uint8_image,
                                get_displacement_km)
@@ -39,33 +40,11 @@ class SeaIceDrift(object):
                           factor=0.5, vmin=0, vmax=0.013,
                           domainMargin=10, maxDrift=20,
                           denoise=False, dB=False, **kwargs):
-        ''' Find starting and ending point of drift using feature tracking '''
-        if denoise:
-            # open, denoise and reduce size
-            n1 = get_denoised_object(self.filename1, bandName, factor, **kwargs)
-            n2 = get_denoised_object(self.filename2, bandName, factor, **kwargs)
-        else:
-            # open and reduce size
-            n1 = Nansat(self.filename1)
-            n2 = Nansat(self.filename2)
-            n1.resize(factor, eResampleAlg=-1)
-            n2.resize(factor, eResampleAlg=-1)
-
-        # increase accuracy of coordinate transfomation
-        n1 = reproject_gcp_to_stere(n1)
-        n2 = reproject_gcp_to_stere(n2)
-
-        # get matrices with data
-        img1 = n1[bandName]
-        img2 = n2[bandName]
-
-        if not denoise and dB:
-            img1 = 10 * np.log10(img1)
-            img2 = 10 * np.log10(img2)
-
-        # convert to 0 - 255
-        img1 = get_uint8_image(img1, vmin, vmax)
-        img2 = get_uint8_image(img2, vmin, vmax)
+        # get Nansat and Image
+        n1, img1 = get_n_img(self.filename1, bandName, factor,
+                             vmin, vmax, denoise, dB, **kwargs)
+        n2, img2 = get_n_img(self.filename2, bandName, factor,
+                             vmin, vmax, denoise, dB, **kwargs)
 
         # find many key points
         kp1, descr1 = find_key_points(img1, **kwargs)

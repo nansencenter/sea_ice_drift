@@ -127,3 +127,26 @@ def x2y2_interpolation_near(x1, y1, x2, y2, x1grd, y1grd, method='linear'):
     y2grd = griddata(src, y2, dst, method=method).T
 
     return x2grd, y2grd
+
+def get_n_img(filename, bandName, factor, vmin, vmax, denoise, dB,
+                                                              **kwargs):
+    ''' Get Nansat object and matrix with scaled image data'''
+    if denoise:
+        # run denoising
+        n = get_denoised_object(filename, bandName, factor, **kwargs)
+    else:
+        # open data with Nansat and downsample
+        n = Nansat(filename)
+        n.resize(factor, eResampleAlg=-1)
+    # improve geonetric accuracy
+    n = reproject_gcp_to_stere(n)
+    n.vrt.tps = True
+    # get matrix with data
+    img = n[bandName]
+    # convert to dB
+    if not denoise and dB:
+        img = 10 * np.log10(img)
+    # convert to 0 - 255
+    img = get_uint8_image(img, vmin, vmax)
+
+    return n, img

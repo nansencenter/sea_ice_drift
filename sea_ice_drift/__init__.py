@@ -7,7 +7,8 @@ from sea_ice_drift.lib import (reproject_gcp_to_stere,
                                get_displacement_pix,
                                get_denoised_object,
                                x2y2_interpolation_poly,
-                               x2y2_interpolation_near)
+                               x2y2_interpolation_near,
+                               get_n_img)
 
 from sea_ice_drift.ftlib import (find_key_points,
                                  get_match_coords,
@@ -32,7 +33,8 @@ __all__ = [
     'get_denoised_object',
     'x2y2_interpolation_poly',
     'x2y2_interpolation_near',
-
+    'get_n_img', 
+    
     'find_key_points',
     'get_match_coords',
     'domain_filter',

@@ -19,7 +19,8 @@ from sea_ice_drift import (SeaIceDrift,
                            lstsq_filter,
                            reproject_gcp_to_stere,
                            get_displacement_km,
-                           get_displacement_pix)
+                           get_displacement_pix,
+                           get_n_img)
 
 class SeaIceDriftLibTests(unittest.TestCase):
     def setUp(self):
@@ -89,6 +90,15 @@ class SeaIceDriftLibTests(unittest.TestCase):
         plt.close('all')
         self.assertTrue(len(u) == len(x1))
 
+    def test_get_n_img(self):
+        ''' Shall return Nansat and Matrix '''
+        n, img = get_n_img(self.testFiles[0],
+                           'sigma0_HV', 0.5, 0.001, 0.013, False, False)
+        
+        self.assertIsInstance(n, Nansat)
+        self.assertEqual(img.dtype, np.uint8)
+        self.assertEqual(img.min(), 0)
+        self.assertEqual(img.max(), 255)
 
 class SeaIceDriftFTLibTests(SeaIceDriftLibTests):
     def test_find_key_points(self):
