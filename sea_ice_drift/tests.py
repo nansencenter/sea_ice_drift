@@ -4,6 +4,7 @@ import os
 import sys
 import glob
 import unittest
+import inspect
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -52,7 +53,7 @@ class SeaIceDriftLibTests(unittest.TestCase):
         ''' Shall scale image values from float (or any) to 0 - 255 [uint8] '''
 
         imageUint8 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        plt.imsave('sea_ice_drift_tests_00_imgUint8.png',
+        plt.imsave('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name,
                     imageUint8, vmin=0, vmax=255)
 
         self.assertEqual(imageUint8.dtype, np.uint8)
@@ -71,7 +72,7 @@ class SeaIceDriftLibTests(unittest.TestCase):
         lon1, lat1 = self.n1.transform_points(x1, y1)
 
         plt.quiver(lon1, lat1, u, v)
-        plt.savefig('sea_ice_drift_tests_01_quiver_lonlat.png')
+        plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name)
         plt.close('all')
         self.assertTrue(len(u) == len(x1))
 
@@ -86,7 +87,7 @@ class SeaIceDriftLibTests(unittest.TestCase):
         u, v = get_displacement_pix(self.n1, x1, y1, self.n2, x2, y2)
 
         plt.quiver(x1, y1, u, v)
-        plt.savefig('sea_ice_drift_tests_02_quiver_pixlin.png')
+        plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name)
         plt.close('all')
         self.assertTrue(len(u) == len(x1))
 
@@ -138,7 +139,7 @@ class SeaIceDriftFTLibTests(SeaIceDriftLibTests):
         lon2, lat2 = self.n2.transform_points(cols2, rows2, 0)
         plt.plot(lon1, lat1, '.')
         plt.plot(lon2, lat2, '.')
-        plt.savefig('sea_ice_drift_tests_03_domain_filter.png')
+        plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name)
         plt.close('all')
 
         self.assertTrue(len(descr2f) < len(descr2))
@@ -181,7 +182,7 @@ class SeaIceDriftClassTests(SeaIceDriftLibTests):
         plt.plot(lon1, lat1, '.')
         plt.plot(lon2, lat2, '.')
         plt.quiver(lon1, lat1, u, v, color='r')
-        plt.savefig('sea_ice_drift_tests_04_quiver_lonlat_class.png')
+        plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name)
         plt.close('all')
 
 
