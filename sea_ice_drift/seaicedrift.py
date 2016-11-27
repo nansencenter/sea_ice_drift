@@ -18,64 +18,34 @@ import numpy as np
 
 from nansat import Nansat
 
-from sea_ice_drift.lib import (get_n_img,
-                               get_denoised_object,
-                               reproject_gcp_to_stere,
-                               get_uint8_image,
-                               get_displacement_km)
-from sea_ice_drift.ftlib import (find_key_points,
-                                 domain_filter,
-                                 get_match_coords,
-                                 max_drift_filter,
-                                 lstsq_filter)
+from sea_ice_drift.lib import get_n_img, get_drift_vectors
+from sea_ice_drift.ftlib import feature_tracking
+from sea_ice_drift.pmlib import pattern_matching
 
 class SeaIceDrift(object):
     ''' Retrieve Sea Ice Drift using Feature Tracking and Pattern Matching'''
-    def __init__(self, filename1, filename2):
+    def __init__(self, filename1, filename2, **kwargs):
         ''' Init from two file names '''
         self.filename1 = filename1
         self.filename2 = filename2
 
-    def feature_tracking(self, bandName='sigma0_HV',
-                          factor=0.5, vmin=0, vmax=0.013,
-                          domainMargin=10, maxDrift=20,
-                          denoise=False, dB=False, **kwargs):
         # get Nansat and Image
-        n1, img1 = get_n_img(self.filename1, bandName, factor,
-                             vmin, vmax, denoise, dB, **kwargs)
-        n2, img2 = get_n_img(self.filename2, bandName, factor,
-                             vmin, vmax, denoise, dB, **kwargs)
+        self.n1, self.img1 = get_n_img(self.filename1, **kwargs)
+        self.n2, self.img2 = get_n_img(self.filename2, **kwargs)
 
-        # find many key points
-        kp1, descr1 = find_key_points(img1, **kwargs)
-        kp2, descr2 = find_key_points(img2, **kwargs)
 
-        # filter keypoints by Domain
-        kp1, descr1 = domain_filter(n1, kp1, descr1, n2, domainMargin)
-        kp2, descr2 = domain_filter(n2, kp2, descr2, n1, domainMargin)
+    def get_drift_FT(self, **kwargs):
+        ''' Get sea ice drift using Feature Tracking '''
+        x1, y1, x2, y2 = feature_tracking(self.n1, self.img1,
+                                          self.n2, self.img2, **kwargs)
+        return get_drift_vectors(self.n1, x1, y1,
+                                 self.n2, x2, y2, **kwargs)
+    
 
-        # find coordinates of matching key points
-        x1, y1, x2, y2 = get_match_coords(kp1, descr1, kp2, descr2, **kwargs)
-
-        # filter out pair with too high drift
-        x1, y1, x2, y2 = max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift)
-
-        # filter out inconsistent pairs
-        x1, y1, x2, y2 = lstsq_filter(x1, y1, x2, y2, **kwargs)
-
-        return n1, img1, x1, y1, n2, img2, x2, y2
-
-    def get_drift_vectors(self, n1, x1, y1, n2, x2, y2, ll2km='domain'):
-        # convert x,y to lon, lat
-        lon1, lat1 = n1.transform_points(x1, y1)
-        lon2, lat2 = n2.transform_points(x2, y2)
-
-        # find displacement in kilometers
-        u, v = get_displacement_km(n1, x1, y1, n2, x2, y2, ll2km=ll2km)
-
-        # convert to speed in m/s
-        dt = n2.time_coverage_start - n1.time_coverage_start
-        u = u * 1000 / dt.total_seconds()
-        v = v * 1000 / dt.total_seconds()
-
-        return u, v, lon1, lat1, lon2, lat2
+    def get_drift_PM(self, lons, lats, lon1, lat1, lon2, lat2, **kwargs):
+        ''' Get sea ice drift using Pattern Matching '''
+        x1, y1 = self.n1.transform_points(lon1, lat1, 1)
+        x2, y2 = self.n2.transform_points(lon2, lat2, 1)
+        return pattern_matching(lons, lats,
+                                self.n1, self.img1, x1, y1,
+                                self.n2, self.img2, x2, y2)
