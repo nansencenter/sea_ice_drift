@@ -36,7 +36,7 @@ class SeaIceDrift(object):
         self.filename1 = filename1
         self.filename2 = filename2
 
-        # get Nansat and Image
+        # get Nansat
         self.n1 = get_n(self.filename1, **kwargs)
         self.n2 = get_n(self.filename2, **kwargs)
 

@@ -343,7 +343,7 @@ class SeaIceDriftClassTests(SeaIceDriftLibTests):
         sid.n2.reproject(Domain(NSR().wkt, '-te -3 86.4 2 86.8 -ts 500 500'))
         s02 = sid.n2['sigma0_HV']
 
-        plt.imshow(s01, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12, vmax=0.01)
+        plt.imshow(s01, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
         plt.quiver(lon1ft, lat1ft, uft, vft, color='r')
         plt.plot(lon2, lat2, '.-r')
         plt.xlim([-3, 2])
@@ -352,7 +352,7 @@ class SeaIceDriftClassTests(SeaIceDriftLibTests):
                     dpi=150, bbox_inches='tight', pad_inches=0)
         plt.close('all')
 
-        plt.imshow(s02, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12, vmax=0.01)
+        plt.imshow(s02, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
         gpi = rpm > 0.4
         plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi])
         plt.plot(lon1, lat1, '.-r')

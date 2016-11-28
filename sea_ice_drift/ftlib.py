@@ -208,7 +208,7 @@ def feature_tracking(n1, n2, domainMargin=10, maxDrift=20, **kwargs):
     '''
     # find many key points
     kp1, descr1 = find_key_points(n1[1], **kwargs)
-    kp2, descr2 = find_key_points(n1[1], **kwargs)
+    kp2, descr2 = find_key_points(n2[1], **kwargs)
 
     # filter keypoints by Domain
     kp1, descr1 = domain_filter(n1, kp1, descr1, n2, domainMargin)

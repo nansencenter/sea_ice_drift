@@ -162,7 +162,8 @@ def use_mcc(x1p, y1p, x2p, y2p, brd, img_size, img1, img2, alpha0, angles=[0]):
     hws = int(img_size / 2.)
     image = img2[y2p-hws-brd:y2p+hws+brd+1,
                  x2p-hws-brd:x2p+hws+brd+1]
-    r,a,dx,dy,_,_ = rotate_and_match(img1, x1p, y1p, img_size, image, alpha0, angles)
+    #import ipdb; ipdb.set_trace()
+    r,a,dx,dy,bestr,bestt = rotate_and_match(img1, x1p, y1p, img_size, image, alpha0, angles)
 
     x2 = x2p + dx
     y2 = y2p + dy

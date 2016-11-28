@@ -220,9 +220,6 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
         # open data with Nansat and downsample
         n = Nansat(filename)
         n.resize(factor, eResampleAlg=-1)
-    # improve geonetric accuracy
-    n.reproject_GCPs()
-    n.vrt.tps = True
     # get matrix with data
     img = n[bandName]
     # convert to dB
@@ -232,6 +229,9 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
     img = get_uint8_image(img, vmin, vmax)
 
     nout = Nansat(domain=n, array=img, parameters={'name': bandName})
+    # improve geonetric accuracy
+    nout.reproject_GCPs()
+    nout.vrt.tps = True
     return nout
 
 def get_drift_vectors(n1, x1, y1, n2, x2, y2, ll2km='domain', **kwargs):
