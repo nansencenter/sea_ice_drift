@@ -16,13 +16,13 @@ before_install:
     fi
   - export OLD_PATH=$PATH
   - export PATH=$HOME/miniconda/bin:$PATH
-  - wget ftp://ftp.nersc.no/pub/nansat/test_data/generic/S1A_EW_GRDM_1SDH_20150328T074433_20150328T074533_005229_0069A8_801E_test.tif
-  - wget ftp://ftp.nersc.no/pub/nansat/test_data/generic/S1A_EW_GRDM_1SDH_20150329T163452_20150329T163552_005249_006A15_FD89_test.tif
+  - wget ftp://ftp.nersc.no/pub/nansat/test_data/generic/S1A_EW_GRDM_1SDH_20161005T142446_20161005T142546_013356_0154D8_C3EC.SAFE.tif
+  - wget ftp://ftp.nersc.no/pub/nansat/test_data/generic/S1B_EW_GRDM_1SDH_20161005T101835_20161005T101935_002370_004016_FBF1.SAFE.tif
   - export ICE_DRIFT_TEST_DATA_DIR=./
 
 install:
   - conda update -q --yes conda
-  - conda install -q --yes -c conda-forge numpy scipy matplotlib nose pillow basemap netcdf4 gdal opencv=$OPENCV_VERSION
+  - conda install -q --yes -c conda-forge qt=4.8.7=0 numpy scipy matplotlib nose pillow basemap netcdf4 gdal opencv=$OPENCV_VERSION
   - export GDAL_DATA=/home/vagrant/miniconda/share/gdal/
   - export GEOS_DIR=/home/vagrant/miniconda/
   - python -c 'import gdal; print gdal.__file__'
