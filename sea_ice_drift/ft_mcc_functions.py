@@ -1,10 +1,18 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue May  3 15:15:16 2016
-
-@author: stemuc
-"""
-
+# Name:    ft_mcc_functions.py
+# Purpose: Container of Feature Tracking and Pattern Matching functions
+# Authors:      Stefan Muckenhuber, Anton Korosov
+# Created:      3.05.2016
+# Copyright:    (c) NERSC 2016
+# Licence:
+# This file is part of SeaIceDrift.
+# SeaIceDrift is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3 of the License.
+# http://www.gnu.org/licenses/gpl-3.0.html
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 import os
 import numpy as np
 import cv2

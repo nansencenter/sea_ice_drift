@@ -23,7 +23,6 @@ from sea_ice_drift.pmlib import (get_rotated_template,
                                  rotate_and_match,
                                  use_mcc,
                                  use_mcc_mp,
-                                 _init_pool,
                                  prepare_first_guess,
                                  pattern_matching)
 
