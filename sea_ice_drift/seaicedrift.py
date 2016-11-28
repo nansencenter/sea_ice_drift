@@ -25,7 +25,14 @@ from sea_ice_drift.pmlib import pattern_matching
 class SeaIceDrift(object):
     ''' Retrieve Sea Ice Drift using Feature Tracking and Pattern Matching'''
     def __init__(self, filename1, filename2, **kwargs):
-        ''' Init from two file names '''
+        ''' Initialize from two file names:
+        Open files with Nansat
+        Read data from sigma0_HV or other band and convert to UInt8
+        Parameters
+        ----------
+            filename1 : str, file name of the first Sentinel-1 image
+            filename2 : str, file name of the second Sentinel-1 image
+        '''
         self.filename1 = filename1
         self.filename2 = filename2
 
@@ -33,9 +40,22 @@ class SeaIceDrift(object):
         self.n1, self.img1 = get_n_img(self.filename1, **kwargs)
         self.n2, self.img2 = get_n_img(self.filename2, **kwargs)
 
-
     def get_drift_FT(self, **kwargs):
-        ''' Get sea ice drift using Feature Tracking '''
+        ''' Get sea ice drift using Feature Tracking
+        Parameters
+        ----------
+            **kwargs : parameters for
+                feature_tracking
+                get_drift_vectors
+        Returns
+        -------
+            u : 1D vector - eastward ice drift speed
+            v : 1D vector - northward ice drift speed
+            lon1 : 1D vector - longitudes of source points
+            lat1 : 1D vector - latitudes of source points
+            lon2 : 1D vector - longitudes of destination points
+            lat2 : 1D vector - latitudes of destination points
+        '''
         x1, y1, x2, y2 = feature_tracking(self.n1, self.img1,
                                           self.n2, self.img2, **kwargs)
         return get_drift_vectors(self.n1, x1, y1,
@@ -43,7 +63,27 @@ class SeaIceDrift(object):
     
 
     def get_drift_PM(self, lons, lats, lon1, lat1, lon2, lat2, **kwargs):
-        ''' Get sea ice drift using Pattern Matching '''
+        ''' Get sea ice drift using Pattern Matching
+        Parameters
+        ----------
+            lons : 1D vector, longitude of result vectors on image 1
+            lats : 1D vector, latitude of result  vectors on image 1
+            lon1 : 1D vector, longitude of keypoints on image1
+            lat1 : 1D vector, latitude  of keypoints on image1
+            lon2 : 1D vector, longitude of keypoints on image2
+            lat2 : 1D vector, latitude  of keypoints on image2
+            **kwargs : parameters for
+                feature_tracking
+                get_drift_vectors
+        Returns
+        -------
+            u : 1D vector, eastward ice drift speed, m/s
+            v : 1D vector, eastward ice drift speed, m/s
+            r : 1D vector, MCC
+            a : 1D vector, angle that gives the highes MCC
+            lon2_dst : 1D vector, longitude of results on image 2
+            lat2_dst : 1D vector, latitude  of results on image 2
+        '''
         x1, y1 = self.n1.transform_points(lon1, lat1, 1)
         x2, y2 = self.n2.transform_points(lon2, lat2, 1)
         return pattern_matching(lons, lats,
