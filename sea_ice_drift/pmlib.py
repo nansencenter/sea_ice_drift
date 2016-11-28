@@ -263,7 +263,7 @@ def prepare_first_guess(x1_dst, y1_dst, x1, y1, x2, y2, img1, img_size,
     return x2fg, y2fg, border
 
 def pattern_matching(lon1_dst, lat1_dst,
-                     n1, img1, x1, y1, n2, img2, x2, y2,
+                     n1, x1, y1, n2, x2, y2,
                      img_size=35, threads=5, angles=range(-5,6),
                      **kwargs):
     ''' Run Pattern Matching Algorithm on two images
@@ -271,12 +271,10 @@ def pattern_matching(lon1_dst, lat1_dst,
     ---------
         lon_dst : 1D vector, longitude of results on image 1
         lon_dst : 1D vector, latitude of results on image 1
-        n1 : Nansat, the fist image
-        img1 : 2D array, the fist image        
+        n1 : Nansat, the fist image with 2D array        
         x1 : 1D vector, X coordinates of keypoints on image 1
         y1 : 1D vector, Y coordinates of keypoints on image 1
-        n2 : Nansat, the second image
-        img2 : 2D array, the second image        
+        n2 : Nansat, the second image with 2D array        
         x2 : 1D vector, X coordinates of keypoints on image 2
         y2 : 1D vector, Y coordinates of keypoints on image 2
         img_size : int, size of template
@@ -298,7 +296,7 @@ def pattern_matching(lon1_dst, lat1_dst,
     x1_dst, y1_dst = n1.transform_points(lon1_dst.flatten(), lat1_dst.flatten(), 1)
 
     x2fg, y2fg, border = prepare_first_guess(x1_dst, y1_dst,
-                                             x1, y1, x2, y2, img1,
+                                             x1, y1, x2, y2, n1[1],
                                              img_size,
                                              **kwargs)
     # find good input points
@@ -314,7 +312,7 @@ def pattern_matching(lon1_dst, lat1_dst,
     # run MCC in multiple threads
     p = Pool(threads, initializer=_init_pool,
             initargs=(x1_dst, y1_dst, x2fg, y2fg, border, gpi,
-            img_size, img1, img2, alpha0, angles))
+            img_size, n1[1], n2[1], alpha0, angles))
     results = p.map(use_mcc_mp, range(len(gpi[gpi])))
     
     x2_dst = np.array(results)[:,0]

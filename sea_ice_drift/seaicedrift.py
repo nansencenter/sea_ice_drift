@@ -18,7 +18,7 @@ import numpy as np
 
 from nansat import Nansat
 
-from sea_ice_drift.lib import get_n_img, get_drift_vectors
+from sea_ice_drift.lib import get_n, get_drift_vectors
 from sea_ice_drift.ftlib import feature_tracking
 from sea_ice_drift.pmlib import pattern_matching
 
@@ -37,8 +37,8 @@ class SeaIceDrift(object):
         self.filename2 = filename2
 
         # get Nansat and Image
-        self.n1, self.img1 = get_n_img(self.filename1, **kwargs)
-        self.n2, self.img2 = get_n_img(self.filename2, **kwargs)
+        self.n1 = get_n(self.filename1, **kwargs)
+        self.n2 = get_n(self.filename2, **kwargs)
 
     def get_drift_FT(self, **kwargs):
         ''' Get sea ice drift using Feature Tracking
@@ -56,8 +56,7 @@ class SeaIceDrift(object):
             lon2 : 1D vector - longitudes of destination points
             lat2 : 1D vector - latitudes of destination points
         '''
-        x1, y1, x2, y2 = feature_tracking(self.n1, self.img1,
-                                          self.n2, self.img2, **kwargs)
+        x1, y1, x2, y2 = feature_tracking(self.n1, self.n2, **kwargs)
         return get_drift_vectors(self.n1, x1, y1,
                                  self.n2, x2, y2, **kwargs)
     
@@ -86,6 +85,5 @@ class SeaIceDrift(object):
         '''
         x1, y1 = self.n1.transform_points(lon1, lat1, 1)
         x2, y2 = self.n2.transform_points(lon2, lat2, 1)
-        return pattern_matching(lons, lats,
-                                self.n1, self.img1, x1, y1,
-                                self.n2, self.img2, x2, y2)
+        return pattern_matching(lons, lats, self.n1, x1, y1,
+                                            self.n2, x2, y2)

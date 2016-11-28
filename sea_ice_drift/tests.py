@@ -33,7 +33,7 @@ from sea_ice_drift.lib import (get_uint8_image,
                                get_denoised_object,
                                x2y2_interpolation_poly,
                                x2y2_interpolation_near,
-                               get_n_img,
+                               get_n,
                                get_drift_vectors,
                                _fill_gpi)
 
@@ -118,17 +118,17 @@ class SeaIceDriftLibTests(unittest.TestCase):
         plt.close('all')
         self.assertEqual(len(u), len(x1))
 
-    def test_get_n_img(self):
+    def test_get_n(self):
         ''' Shall return Nansat and Matrix '''
-        n, img = get_n_img(self.testFiles[0],
+        n = get_n(self.testFiles[0],
                            'sigma0_HV', 0.5, 0.001, 0.013, False, False)
-        n, img = get_n_img(self.testFiles[0],
+        n = get_n(self.testFiles[0],
                            'sigma0_HV', 0.5, -20, -15, False, True)
         
         self.assertIsInstance(n, Nansat)
-        self.assertEqual(img.dtype, np.uint8)
-        self.assertEqual(img.min(), 0)
-        self.assertEqual(img.max(), 255)
+        self.assertEqual(n[1].dtype, np.uint8)
+        self.assertEqual(n[1].min(), 0)
+        self.assertEqual(n[1].max(), 255)
 
     def test_x2y2_interpolation_poly(self):
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
@@ -307,13 +307,13 @@ class SeaIceDriftPMLibTests(SeaIceDriftLibTests):
     
     def test_rotate_and_match(self):
         ''' shall rotate and match'''
-        n1, img1 = get_n_img(self.testFiles[0])
-        n2, img2 = get_n_img(self.testFiles[1])
+        n1 = get_n(self.testFiles[0])
+        n2 = get_n(self.testFiles[1])
         (best_r, best_a, dx, dy,
          best_result, best_template) = rotate_and_match(
-                         img1,300,100,50,img2,60,[-2,-1,0,1,2])
+                         n1[1],300,100,50,n2[1],60,[-2,-1,0,1,2])
         plt.subplot(1,3,1)
-        plt.imshow(img2, interpolation='nearest')
+        plt.imshow(n2[1], interpolation='nearest')
         plt.subplot(1,3,2)
         plt.imshow(best_result, interpolation='nearest', vmin=0)
         plt.subplot(1,3,3)
