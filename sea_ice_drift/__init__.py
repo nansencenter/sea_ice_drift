@@ -7,7 +7,7 @@ from sea_ice_drift.lib import (get_uint8_image,
                                get_denoised_object,
                                x2y2_interpolation_poly,
                                x2y2_interpolation_near,
-                               get_n_img,
+                               get_n,
                                get_drift_vectors)
 
 from sea_ice_drift.ftlib import (find_key_points,
@@ -23,7 +23,6 @@ from sea_ice_drift.pmlib import (get_rotated_template,
                                  rotate_and_match,
                                  use_mcc,
                                  use_mcc_mp,
-                                 _init_pool,
                                  prepare_first_guess,
                                  pattern_matching)
 
@@ -37,7 +36,7 @@ __all__ = [
     'get_denoised_object',
     'x2y2_interpolation_poly',
     'x2y2_interpolation_near',
-    'get_n_img', 
+    'get_n', 
     
     'find_key_points',
     'get_match_coords',

@@ -187,15 +187,12 @@ def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, **kwargs):
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
 
-def feature_tracking(n1, img1, n2, img2,
-                      domainMargin=10, maxDrift=20, **kwargs):
+def feature_tracking(n1, n2, domainMargin=10, maxDrift=20, **kwargs):
     ''' Run Feature Tracking Algrotihm on two images
     Parameters
     ----------
-        n1 : First Nansat object
-        img1 : First 2D UInt8 matrix        
-        n2 : Second Nansat object
-        img2 : Second 2D UInt8 matrix        
+        n1 : First Nansat object with 2D UInt8 matrix        
+        n2 : Second Nansat object with 2D UInt8 matrix        
         domainMargin : int - how much to crop from size of domain
         maxDrift : float - maximum allow ice displacement, km
         **kwargs : parameters for functions:
@@ -210,8 +207,8 @@ def feature_tracking(n1, img1, n2, img2,
         y2 : 1D vector - destination Y coordinates on img2, pix
     '''
     # find many key points
-    kp1, descr1 = find_key_points(img1, **kwargs)
-    kp2, descr2 = find_key_points(img2, **kwargs)
+    kp1, descr1 = find_key_points(n1[1], **kwargs)
+    kp2, descr2 = find_key_points(n2[1], **kwargs)
 
     # filter keypoints by Domain
     kp1, descr1 = domain_filter(n1, kp1, descr1, n2, domainMargin)

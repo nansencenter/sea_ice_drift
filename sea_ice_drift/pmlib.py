@@ -162,7 +162,8 @@ def use_mcc(x1p, y1p, x2p, y2p, brd, img_size, img1, img2, alpha0, angles=[0]):
     hws = int(img_size / 2.)
     image = img2[y2p-hws-brd:y2p+hws+brd+1,
                  x2p-hws-brd:x2p+hws+brd+1]
-    r,a,dx,dy,_,_ = rotate_and_match(img1, x1p, y1p, img_size, image, alpha0, angles)
+    #import ipdb; ipdb.set_trace()
+    r,a,dx,dy,bestr,bestt = rotate_and_match(img1, x1p, y1p, img_size, image, alpha0, angles)
 
     x2 = x2p + dx
     y2 = y2p + dy
@@ -263,20 +264,18 @@ def prepare_first_guess(x1_dst, y1_dst, x1, y1, x2, y2, img1, img_size,
     return x2fg, y2fg, border
 
 def pattern_matching(lon1_dst, lat1_dst,
-                     n1, img1, x1, y1, n2, img2, x2, y2,
+                     n1, x1, y1, n2, x2, y2,
                      img_size=35, threads=5, angles=range(-5,6),
                      **kwargs):
     ''' Run Pattern Matching Algorithm on two images
     Parameters
     ---------
-        lon_dst : 1D vector, long coordinates of results on image 1
-        lon_dst : 1D vector, lat coordinates of results on image 1
-        n1 : Nansat, the fist image
-        img1 : 2D array, the fist image        
+        lon_dst : 1D vector, longitude of results on image 1
+        lon_dst : 1D vector, latitude of results on image 1
+        n1 : Nansat, the fist image with 2D array        
         x1 : 1D vector, X coordinates of keypoints on image 1
         y1 : 1D vector, Y coordinates of keypoints on image 1
-        n2 : Nansat, the second image
-        img2 : 2D array, the second image        
+        n2 : Nansat, the second image with 2D array        
         x2 : 1D vector, X coordinates of keypoints on image 2
         y2 : 1D vector, Y coordinates of keypoints on image 2
         img_size : int, size of template
@@ -287,15 +286,18 @@ def pattern_matching(lon1_dst, lat1_dst,
             get_drift_vectors
     Returns
     -------
-        x2fg : 1D vector, first guess X coordinates of results on image 2
-        y2fg : 1D vector, first guess X coordinates of results on image 2
-        border : 1D vector, searching distance
+        u : 1D vector, eastward ice drift speed, m/s
+        v : 1D vector, eastward ice drift speed, m/s
+        r : 1D vector, MCC
+        a : 1D vector, angle that gives the highes MCC
+        lon2_dst : 1D vector, longitude of results on image 2
+        lat2_dst : 1D vector, latitude  of results on image 2
     '''    
     # convert lon/lat to pixe/line of the first image
     x1_dst, y1_dst = n1.transform_points(lon1_dst.flatten(), lat1_dst.flatten(), 1)
 
     x2fg, y2fg, border = prepare_first_guess(x1_dst, y1_dst,
-                                             x1, y1, x2, y2, img1,
+                                             x1, y1, x2, y2, n1[1],
                                              img_size,
                                              **kwargs)
     # find good input points
@@ -311,7 +313,7 @@ def pattern_matching(lon1_dst, lat1_dst,
     # run MCC in multiple threads
     p = Pool(threads, initializer=_init_pool,
             initargs=(x1_dst, y1_dst, x2fg, y2fg, border, gpi,
-            img_size, img1, img2, alpha0, angles))
+            img_size, n1[1], n2[1], alpha0, angles))
     results = p.map(use_mcc_mp, range(len(gpi[gpi])))
     
     x2_dst = np.array(results)[:,0]

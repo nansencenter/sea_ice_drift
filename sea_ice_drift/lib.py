@@ -195,10 +195,10 @@ def x2y2_interpolation_near(x1, y1, x2, y2, x1grd, y1grd, method='linear', **kwa
 
     return x2grd, y2grd
 
-def get_n_img(filename, bandName='sigma0_HV', factor=0.5,
+def get_n(filename, bandName='sigma0_HV', factor=0.5,
                         vmin=-30, vmax=-5, denoise=False, dB=True,
                         **kwargs):
-    ''' Get Nansat object and matrix with scaled image data
+    ''' Get Nansat object with image data scaled to UInt8
     Parameters
     ----------
         filename : str - input file name
@@ -211,8 +211,7 @@ def get_n_img(filename, bandName='sigma0_HV', factor=0.5,
         **kwargs : parameters for get_denoised_object()
     Returns
     -------
-        n : Nansat object
-        img : 2D UInt8 matrix
+        n : Nansat object with one band scaled to UInt8
     '''
     if denoise:
         # run denoising
@@ -221,9 +220,6 @@ def get_n_img(filename, bandName='sigma0_HV', factor=0.5,
         # open data with Nansat and downsample
         n = Nansat(filename)
         n.resize(factor, eResampleAlg=-1)
-    # improve geonetric accuracy
-    n.reproject_GCPs()
-    n.vrt.tps = True
     # get matrix with data
     img = n[bandName]
     # convert to dB
@@ -232,7 +228,11 @@ def get_n_img(filename, bandName='sigma0_HV', factor=0.5,
     # convert to 0 - 255
     img = get_uint8_image(img, vmin, vmax)
 
-    return n, img
+    nout = Nansat(domain=n, array=img, parameters={'name': bandName})
+    # improve geonetric accuracy
+    nout.reproject_GCPs()
+    nout.vrt.tps = True
+    return nout
 
 def get_drift_vectors(n1, x1, y1, n2, x2, y2, ll2km='domain', **kwargs):
     ''' Find ice drift speed m/s
