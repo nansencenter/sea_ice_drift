@@ -7,7 +7,7 @@
 A computationally efficient, open source feature tracking algorithm, 
 called ORB, is adopted and tuned for retrieval of the first guess
 sea ice drift from Sentinel-1 SAR images. Pattern matching algorithm 
-based on MCC calculation is used further to retriev sea ice drift on a
+based on MCC calculation is used further to retrieve sea ice drift on a
 regular grid.
 
 ## References:
