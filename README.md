@@ -10,6 +10,9 @@ sea ice drift from Sentinel-1 SAR images. Pattern matching algorithm
 based on MCC calculation is used further to retriev sea ice drift on a
 regular grid.
 
+## References:
+ * Stefan Muckenhuber, Anton Andreevich Korosov, and Stein Sandven, Open-source feature-tracking algorithm for sea ice drift retrieval from Sentinel-1 SAR imagery, The Cryosphere, 10, 913-925, doi:10.5194/tc-10-913-2016, 2016
+ 
 ## Requirements:
  * Nansat (https://github.com/nansencenter/nansat, scientist friendly open-source Python toolbox for processing 2D satellite earth observation data)
  * openCV (http://opencv.org, open-source computer vision)
@@ -19,7 +22,7 @@ regular grid.
  * Install OpenCV (e.g. using miniconda: `conda install -c conda-forge opencv`
  * Download the code and run `python setup.py install`
 
-## Usage
+## Example
 ```
 # download example datasets
 wget ftp://ftp.nersc.no/pub/nansat/test_data/generic/S1A_EW_GRDM_1SDH_20161005T142446_20161005T142546_013356_0154D8_C3EC.SAFE.tif
@@ -58,9 +61,6 @@ gpi = rpm > 0.4
 plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi])
 
 ```
+![Feature Tracking and the first SAR image](https://raw.githubusercontent.com/nansencenter/sea_ice_drift/add_mcc_functions/examples/sea_ice_drift_FT_img1.png)
 
-## Example
- * Download the following Sentinel-1 files from https://scihub.esa.int:
-   * S1A_EW_GRDM_1SDH_20150328T074433_20150328T074533_005229_0069A8_801E.zip
-   * S1A_EW_GRDM_1SDH_20150329T163452_20150329T163552_005249_006A15_FD89.zip
- * Run `example.py`
+![Pattern Matching and the second SAR image](https://raw.githubusercontent.com/nansencenter/sea_ice_drift/add_mcc_functions/examples/sea_ice_drift_PM_img2.png)
