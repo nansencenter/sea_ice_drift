@@ -11,15 +11,15 @@ based on MCC calculation is used further to retriev sea ice drift on a
 regular grid.
 
 ## References:
- * Stefan Muckenhuber, Anton Andreevich Korosov, and Stein Sandven, Open-source feature-tracking algorithm for sea ice drift retrieval from Sentinel-1 SAR imagery, The Cryosphere, 10, 913-925, doi:10.5194/tc-10-913-2016, 2016
+ * Stefan Muckenhuber, Anton Andreevich Korosov, and Stein Sandven, Open-source feature-tracking algorithm for sea ice drift retrieval from Sentinel-1 SAR imagery, The Cryosphere, 10, 913-925, [doi:10.5194/tc-10-913-2016](http://www.the-cryosphere.net/10/913/2016/), 2016
  
 ## Requirements:
- * Nansat (https://github.com/nansencenter/nansat, scientist friendly open-source Python toolbox for processing 2D satellite earth observation data)
- * openCV (http://opencv.org, open-source computer vision)
+ * [Nansat](https://github.com/nansencenter/nansat) - scientist friendly open-source Python toolbox for processing 2D satellite earth observation data)
+ * [OpenCV](http://opencv.org) - open-source computer vision
 
 ## Installation
- * Install Nansat as described on the (home page, https://github.com/nansencenter/nansat)
- * Install OpenCV (e.g. using miniconda: `conda install -c conda-forge opencv`
+ * Install Nansat as described on the [home page](https://github.com/nansencenter/nansat)
+ * Install OpenCV (e.g. using [miniconda](http://conda.pydata.org/miniconda.html): `conda install -c conda-forge opencv`
  * Download the code and run `python setup.py install`
 
 ## Example
@@ -61,6 +61,7 @@ gpi = rpm > 0.4
 plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi])
 
 ```
+Full example [here](http://conda.pydata.org/miniconda.html)
 ![Feature Tracking and the first SAR image](https://raw.githubusercontent.com/nansencenter/sea_ice_drift/add_mcc_functions/examples/sea_ice_drift_FT_img1.png)
 
 ![Pattern Matching and the second SAR image](https://raw.githubusercontent.com/nansencenter/sea_ice_drift/add_mcc_functions/examples/sea_ice_drift_PM_img2.png)
