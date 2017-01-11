@@ -61,7 +61,8 @@ gpi = rpm > 0.4
 plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi])
 
 ```
-Full example [here](http://conda.pydata.org/miniconda.html)
+Full example [here](https://github.com/nansencenter/sea_ice_drift/blob/add_mcc_functions/examples/simple.py)
+
 ![Feature Tracking and the first SAR image](https://raw.githubusercontent.com/nansencenter/sea_ice_drift/add_mcc_functions/examples/sea_ice_drift_FT_img1.png)
 
 ![Pattern Matching and the second SAR image](https://raw.githubusercontent.com/nansencenter/sea_ice_drift/add_mcc_functions/examples/sea_ice_drift_PM_img2.png)
