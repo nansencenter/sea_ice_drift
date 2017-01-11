@@ -82,29 +82,36 @@ def get_match_coords(keyPoints1, descriptors1,
     -------
         x1, y1, x2, y2 : coordinates of start and end of displacement [pixels]
     '''
+    matches = _get_matches(descriptors1,
+                           descriptors2, matcher, norm, verbose)
+    x1, y1, x2, y2 = _filter_matches(matches, ratio_test,
+                                     keyPoints1, keyPoints2, verbose)
+    return x1, y1, x2, y2
+
+def _get_matches(descriptors1, descriptors2, matcher, norm, verbose):
+    ''' Match keypoints using BFMatcher with cv2.NORM_HAMMING '''
     t0 = time.time()
-    # Match keypoints using BFMatcher with cv2.NORM_HAMMING
     bf = matcher(norm)
     matches = bf.knnMatch(descriptors1, descriptors2, k=2)
     t1 = time.time()
     if verbose:
         print 'Keypoints matched', t1 - t0
+    return matches
 
-    # Apply ratio test from Lowe
+def _filter_matches(matches, ratio_test, keyPoints1, keyPoints2, verbose):
+    ''' Apply ratio test from Lowe '''
     good = []
     for m,n in matches:
         if m.distance < ratio_test*n.distance:
             good.append(m)
-    t2 = time.time()
     if verbose:
-        print 'Ratio test %f found %d keypoints in %f' % (ratio_test, len(good), t2-t1)
+        print 'Ratio test %f found %d keypoints' % (ratio_test, len(good))
 
     # Coordinates for start, end point of vectors
     x1 = np.array([keyPoints1[m.queryIdx].pt[0] for m in good])
     y1 = np.array([keyPoints1[m.queryIdx].pt[1] for m in good])
     x2 = np.array([keyPoints2[m.trainIdx].pt[0] for m in good])
     y2 = np.array([keyPoints2[m.trainIdx].pt[1] for m in good])
-
     return x1, y1, x2, y2
 
 def domain_filter(n, keyPoints, descr, domain, domainMargin=0):

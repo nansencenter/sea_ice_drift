@@ -188,12 +188,12 @@ def use_mcc_mp(i):
     global img_size_shared, img1_shared, img2_shared
     global angles_shared, alpha0_shared
 
-    print i, x1_dst_shared[i], y1_dst_shared[i], 
     x2, y2, r, a = use_mcc(x1_dst_shared[i], y1_dst_shared[i],
                    x2fg_shared[i], y2fg_shared[i], border_shared[i],
                    img_size_shared,
                    img1_shared, img2_shared, alpha0_shared, angles_shared)
-    print x2, y2, r, a
+    if i % 10 == 0:
+        print i, x1_dst_shared[i], y1_dst_shared[i], x2, y2, r, a
     return x2, y2, r, a
 
 def _init_pool(x1_dst, y1_dst, x2fg, y2fg, border, gpi, img_size,

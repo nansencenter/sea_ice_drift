@@ -86,4 +86,4 @@ class SeaIceDrift(object):
         x1, y1 = self.n1.transform_points(lon1, lat1, 1)
         x2, y2 = self.n2.transform_points(lon2, lat2, 1)
         return pattern_matching(lons, lats, self.n1, x1, y1,
-                                            self.n2, x2, y2)
+                                            self.n2, x2, y2, **kwargs)
