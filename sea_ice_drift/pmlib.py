@@ -64,7 +64,7 @@ def get_rotated_template(img, r, c, size, angle, order=1):
     rotBorder2 = rotBorder1 + hws + hws
 
     template = img[r-hwsrot:r+hwsrot+1, c-hwsrot:c+hwsrot+1]
-    templateRot = nd.interpolation.rotate(template, angle, order=1)
+    templateRot = nd.interpolation.rotate(template, angle, order=order)
     templateRot = templateRot[rotBorder1:rotBorder2, rotBorder1:rotBorder2]
 
     return templateRot
@@ -193,7 +193,7 @@ def use_mcc_mp(i):
                    img_size_shared,
                    img1_shared, img2_shared, alpha0_shared, angles_shared)
     if i % 10 == 0:
-        print i, x1_dst_shared[i], y1_dst_shared[i], x2, y2, r, a
+        print 100 * float(i) / len(x1_dst_shared), '%', x1_dst_shared[i], y1_dst_shared[i], x2, y2, r, a
     return x2, y2, r, a
 
 def _init_pool(x1_dst, y1_dst, x2fg, y2fg, border, gpi, img_size,
