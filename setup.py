@@ -4,7 +4,7 @@ import_error_msg = "Sea Ice Drift requires %s, which should be installed separat
 
 setup(
     name = "sea_ice_drift",
-    version = "0.2",
+    version = "0.3",
     author = ('Anton Korosov', 'Stefan Muckenhuber'),
     author_email = "anton.korosov@nersc.no",
     description = ("Drift of sea ice from satellite data using feature tracking and pattern matching methods"),
