@@ -18,7 +18,9 @@ import numpy as np
 
 from scipy.interpolate import griddata
 
-from nansat import Nansat, Domain
+from nansat import Nansat, Domain, NSR
+
+AVG_EARTH_RADIUS = 6371  # in km
 
 def get_uint8_image(image, vmin, vmax):
     ''' Scale image from float (or any) input array to uint8
@@ -39,8 +41,9 @@ def get_uint8_image(image, vmin, vmax):
 
     return uint8Image.astype('uint8')
 
-def get_displacement_km(n1, x1, y1, n2, x2, y2, ll2km='domain'):
-    ''' Find displacement in kilometers using Domain
+def get_displacement_km(n1, x1, y1, n2, x2, y2):
+    ''' Find displacement in kilometers using Haversine
+        http://www.movable-type.co.uk/scripts/latlong.html
     Parameters
     ----------
         n1 : First Nansat object
@@ -49,51 +52,19 @@ def get_displacement_km(n1, x1, y1, n2, x2, y2, ll2km='domain'):
         n2 : Second Nansat object
         x1 : 1D vector - X coordinates of keypoints on image 2
         y1 : 1D vector - Y coordinates of keypoints on image 2
-        ll2km : ['domain' or 'equirec'] - switch to compute distance
     Returns
     -------
-        dx : 1D vector - eastward displacement, km
-        dy : 1D vector - northward displacement, km
+        h : 1D vector - total displacement, km
     '''
     lon1, lat1 = n1.transform_points(x1, y1)
     lon2, lat2 = n2.transform_points(x2, y2)
 
-    if ll2km == 'domain':
-        d = Domain('+proj=stere +lon_0=%f +lat_0=%f +no_defs' % (lon1.mean(),
-                                                                 lat1.mean()),
-                    '-te -100000 -100000 100000 100000 -tr 1000 1000')
-        x1d, y1d = d.transform_points(lon1, lat1, 1)
-        x2d, y2d = d.transform_points(lon2, lat2, 1)
-        dx = x2d - x1d
-        dy = y1d - y2d
-    elif ll2km == 'equirec':
-        dx, dy = get_displacement_km_equirec(lon1, lat1, lon2, lat2)
-
-    return dx, dy
-
-def get_displacement_km_equirec(lon1, lat1, lon2, lat2):
-    ''' Find displacement in KM using Equirectangular approximation
-    Parameters
-    ----------
-        lon1 : 1D vector - longitudes of keypoints on image 1
-        lat1 : 1D vector - latitudes of keypoints on image 1
-        lon2 : 1D vector - longitudes of keypoints on image 2
-        lat2 : 1D vector - latitudes of keypoints on image 2
-    Returns
-    -------
-        dx : 1D vector - eastward displacement, km
-        dy : 1D vector - northward displacement, km
-    '''
-    # U,V Equirectangular
-    dlong = (lon2 - lon1)*np.pi/180;
-    dlat  = (lat2 - lat1)*np.pi/180;
-    slat  = (lat1 + lat2)*np.pi/180;
-    p1 = (dlong)*np.cos(0.5*slat)
-    p2 = (dlat)
-    dx = 6371.000 * p1
-    dy = 6371.000 * p2
-
-    return dx, dy
+    lt1, ln1, lt2, ln2 = map(np.radians, (lat1, lon1, lat2, lon2))
+    dlat = lt2 - lt1
+    dlon = ln2 - ln1
+    d = (np.sin(dlat * 0.5) ** 2 +
+         np.cos(lt1) * np.cos(lt2) * np.sin(dlon * 0.5) ** 2)
+    return 2 * AVG_EARTH_RADIUS * np.arcsin(np.sqrt(d))
 
 def get_displacement_pix(n1, x1, y1, n2, x2, y2):
     ''' Find displacement in pixels of the first image
@@ -107,8 +78,8 @@ def get_displacement_pix(n1, x1, y1, n2, x2, y2):
         y1 : 1D vector - Y coordinates of keypoints on image 2
     Returns
     -------
-        dx : 1D vector - eastward displacement, pix
-        dy : 1D vector - northward displacement, pix
+        dx : 1D vector - leftward displacement, pix
+        dy : 1D vector - upward displacement, pix
     '''
     lon2, lat2 = n2.transform_points(x2, y2)
     x2n1, y2n1 = n1.transform_points(lon2, lat2, 1)
@@ -234,7 +205,7 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
     nout.vrt.tps = True
     return nout
 
-def get_drift_vectors(n1, x1, y1, n2, x2, y2, ll2km='domain', **kwargs):
+def get_drift_vectors(n1, x1, y1, n2, x2, y2, nsr=NSR(), **kwargs):
     ''' Find ice drift speed m/s
     Parameters
     ----------
@@ -244,7 +215,7 @@ def get_drift_vectors(n1, x1, y1, n2, x2, y2, ll2km='domain', **kwargs):
         n2 : Second Nansat object
         x1 : 1D vector - X coordinates of keypoints on image 2
         y1 : 1D vector - Y coordinates of keypoints on image 2
-        ll2km : ['domain' or 'equirec'] - switch to compute distance
+        nsr: Nansat.NSR(), projection that defines the grid
     Returns
     -------
         u : 1D vector - eastward ice drift speed
@@ -257,16 +228,15 @@ def get_drift_vectors(n1, x1, y1, n2, x2, y2, ll2km='domain', **kwargs):
     # convert x,y to lon, lat
     lon1, lat1 = n1.transform_points(x1, y1)
     lon2, lat2 = n2.transform_points(x2, y2)
+    
+    # create domain that converts lon/lat to units of the projection
+    d = Domain(nsr, '-te -100 -100 100 100 -tr 1 1')
 
-    # find displacement in kilometers
-    u, v = get_displacement_km(n1, x1, y1, n2, x2, y2, ll2km=ll2km)
+    # find displacement in needed units
+    x1, y1 = d.transform_points(lon1, lat1, 1)
+    x2, y2 = d.transform_points(lon1, lat1, 1)
 
-    # convert to speed in m/s
-    dt = n2.time_coverage_start - n1.time_coverage_start
-    u = u * 1000 / dt.total_seconds()
-    v = v * 1000 / dt.total_seconds()
-
-    return u, v, lon1, lat1, lon2, lat2
+    return x2-x1, y2-y1, lon1, lat1, lon2, lat2
 
 def _fill_gpi(shape, gpi, data):
     ''' Fill 1D <data> into 2D matrix with <shape> based on 1D <gpi> '''

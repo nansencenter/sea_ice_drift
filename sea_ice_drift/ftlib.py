@@ -158,8 +158,7 @@ def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=20):
         x2 : 1D vector - filtered destination X coordinates on img2, pix
         y2 : 1D vector - filtered destination Y coordinates on img2, pix
     '''
-    u, v = get_displacement_km(n1, x1, y1, n2, x2, y2)
-    gpi = np.hypot(u,v) <= maxDrift
+    gpi = get_displacement_km(n1, x1, y1, n2, x2, y2) <= maxDrift
 
     print 'MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi]))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]

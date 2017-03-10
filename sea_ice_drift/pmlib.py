@@ -21,8 +21,6 @@ from scipy import ndimage as nd
 
 import cv2
 
-from nansat import Nansat, Domain
-
 from sea_ice_drift.lib import (x2y2_interpolation_poly,
                                x2y2_interpolation_near,
                                get_drift_vectors,
