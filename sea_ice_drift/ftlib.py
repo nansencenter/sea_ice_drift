@@ -180,6 +180,8 @@ def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, **kwargs):
         x2 : 1D vector - filtered destination X coordinates on img2, pix
         y2 : 1D vector - filtered destination Y coordinates on img2, pix
     '''
+    if len(x1) == 0:
+        return map(np.array, [[],[],[],[]])
     # interpolate using N-order polynomial
     x2sim, y2sim = x2y2_interpolation_poly(x1, y1, x2, y2, x1, y1, order=order)
 
