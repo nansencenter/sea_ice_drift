@@ -64,7 +64,7 @@ def get_match_coords(keyPoints1, descriptors1,
                                     keyPoints2, descriptors2,
                                     matcher=cv2.BFMatcher,
                                     norm=cv2.NORM_HAMMING,
-                                    ratio_test=0.75,
+                                    ratio_test=0.7,
                                     verbose=True,
                                     **kwargs):
     ''' Filter matching keypoints and convert to X,Y coordinates
@@ -158,8 +158,7 @@ def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=20):
         x2 : 1D vector - filtered destination X coordinates on img2, pix
         y2 : 1D vector - filtered destination Y coordinates on img2, pix
     '''
-    u, v = get_displacement_km(n1, x1, y1, n2, x2, y2)
-    gpi = np.hypot(u,v) <= maxDrift
+    gpi = get_displacement_km(n1, x1, y1, n2, x2, y2) <= maxDrift
 
     print 'MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi]))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
@@ -181,6 +180,8 @@ def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, **kwargs):
         x2 : 1D vector - filtered destination X coordinates on img2, pix
         y2 : 1D vector - filtered destination Y coordinates on img2, pix
     '''
+    if len(x1) == 0:
+        return map(np.array, [[],[],[],[]])
     # interpolate using N-order polynomial
     x2sim, y2sim = x2y2_interpolation_poly(x1, y1, x2, y2, x1, y1, order=order)
 

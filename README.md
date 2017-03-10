@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/nansencenter/sea_ice_drift.svg?branch=master)](https://travis-ci.org/nansencenter/sea_ice_drift)
 [![Coverage Status](https://coveralls.io/repos/nansencenter/sea_ice_drift/badge.svg?branch=master)](https://coveralls.io/r/nansencenter/sea_ice_drift)
+[![DOI](https://zenodo.org/badge/46479183.svg)](https://zenodo.org/badge/latestdoi/46479183)
 
 # sea_ice_drift
 ##Sea ice drift from Sentinel-1 SAR data

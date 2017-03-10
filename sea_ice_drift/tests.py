@@ -28,7 +28,6 @@ from nansat import Nansat, Domain, NSR
 
 from sea_ice_drift.lib import (get_uint8_image,
                                get_displacement_km,
-                               get_displacement_km_equirec,
                                get_displacement_pix,
                                get_denoised_object,
                                x2y2_interpolation_poly,
@@ -91,17 +90,13 @@ class SeaIceDriftLibTests(unittest.TestCase):
         keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
-        u_dom, v_dom = get_displacement_km(self.n1, x1, y1, self.n2, x2, y2)
-        u_equ, v_equ = get_displacement_km(self.n1, x1, y1, self.n2, x2, y2, 'equirec')
+        h = get_displacement_km(self.n1, x1, y1, self.n2, x2, y2)
 
-        lon1, lat1 = self.n1.transform_points(x1, y1)
-
-        plt.quiver(lon1, lat1, u_dom, v_dom, color='k')
-        plt.quiver(lon1, lat1, u_equ, v_equ, color='g')
+        plt.scatter(x1, y1, 30, h)
+        plt.colorbar()
         plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name)
         plt.close('all')
-        self.assertTrue(len(u_dom) == len(x1))
-        self.assertTrue(len(u_equ) == len(x1))
+        self.assertTrue(len(h) == len(x1))
 
     def test_get_displacement_pix(self):
         ''' Shall find matching coordinates and plot quiver in pixel/line'''
@@ -178,8 +173,7 @@ class SeaIceDriftLibTests(unittest.TestCase):
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
         u, v, lon1, lat1, lon2, lat2 = get_drift_vectors(self.n1, x1, y1,
-                                                         self.n2, x2, y2,
-                                                         ll2km='equirec')
+                                                   self.n2, x2, y2)
 
         plt.plot(lon1, lat1, '.')
         plt.plot(lon2, lat2, '.')
@@ -247,7 +241,8 @@ class SeaIceDriftFTLibTests(SeaIceDriftLibTests):
         keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
         keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
-                                          keyPoints2, descr2)
+                                          keyPoints2, descr2,
+                                          ratio_test=0.8)
         x1f, y1f, x2f, y2f = max_drift_filter(self.n1, x1, y1,
                                           self.n2, x2, y2)
 
@@ -260,7 +255,8 @@ class SeaIceDriftFTLibTests(SeaIceDriftLibTests):
         keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
         keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
-                                          keyPoints2, descr2)
+                                          keyPoints2, descr2,
+                                          ratio_test=0.8)
 
         x1f, y1f, x2f, y2f = lstsq_filter(x1, y1, x2, y2)
         self.assertTrue(len(x1) > len(x1f))
