@@ -64,7 +64,7 @@ def get_match_coords(keyPoints1, descriptors1,
                                     keyPoints2, descriptors2,
                                     matcher=cv2.BFMatcher,
                                     norm=cv2.NORM_HAMMING,
-                                    ratio_test=0.75,
+                                    ratio_test=0.7,
                                     verbose=True,
                                     **kwargs):
     ''' Filter matching keypoints and convert to X,Y coordinates

@@ -241,7 +241,8 @@ class SeaIceDriftFTLibTests(SeaIceDriftLibTests):
         keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
         keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
-                                          keyPoints2, descr2)
+                                          keyPoints2, descr2,
+                                          ratio_test=0.8)
         x1f, y1f, x2f, y2f = max_drift_filter(self.n1, x1, y1,
                                           self.n2, x2, y2)
 
@@ -254,7 +255,8 @@ class SeaIceDriftFTLibTests(SeaIceDriftLibTests):
         keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
         keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
-                                          keyPoints2, descr2)
+                                          keyPoints2, descr2,
+                                          ratio_test=0.8)
 
         x1f, y1f, x2f, y2f = lstsq_filter(x1, y1, x2, y2)
         self.assertTrue(len(x1) > len(x1f))

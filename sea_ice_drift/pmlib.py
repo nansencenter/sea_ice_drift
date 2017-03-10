@@ -263,7 +263,7 @@ def prepare_first_guess(x1_dst, y1_dst, x1, y1, x2, y2, img1, img_size,
 
 def pattern_matching(lon1_dst, lat1_dst,
                      n1, x1, y1, n2, x2, y2,
-                     img_size=35, threads=5, angles=range(-5,6),
+                     img_size=35, threads=5, angles=range(-15,16,3),
                      **kwargs):
     ''' Run Pattern Matching Algorithm on two images
     Parameters
