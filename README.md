@@ -21,7 +21,10 @@ regular grid.
 ## Installation
  * Install Nansat as described on the [home page](https://github.com/nansencenter/nansat)
  * Install OpenCV (e.g. using [miniconda](http://conda.pydata.org/miniconda.html): `conda install -c conda-forge opencv`
- * Download the code and run `python setup.py install`
+ * Use pip to install from the repo:
+```
+pip install https://github.com/nansencenter/sea_ice_drift/archive/add_mcc_functions.zip
+```
 
 ## Example
 ```
