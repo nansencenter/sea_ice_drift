@@ -177,7 +177,7 @@ class SeaIceDriftLibTests(unittest.TestCase):
 
         plt.plot(lon1, lat1, '.')
         plt.plot(lon2, lat2, '.')
-        plt.quiver(lon1, lat1, u, v)
+        plt.quiver(lon1, lat1, u, v, angles='xy', scale_units='xy', scale=0.25)
         plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name)
         plt.close('all')
         self.assertEqual(len(u), len(x1))
