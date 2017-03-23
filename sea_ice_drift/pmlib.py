@@ -20,6 +20,7 @@ import numpy as np
 from scipy import ndimage as nd
 
 import cv2
+import gdal
 
 from sea_ice_drift.lib import (x2y2_interpolation_poly,
                                x2y2_interpolation_near,
@@ -61,7 +62,15 @@ def get_rotated_template(img, r, c, size, angle, order=1):
     rotBorder1 = hwsrot2 - hws
     rotBorder2 = rotBorder1 + hws + hws
 
-    template = img[r-hwsrot:r+hwsrot+1, c-hwsrot:c+hwsrot+1]
+    # read large subimage
+    if isinstance(img, np.ndarray):
+        template = img[r-hwsrot:r+hwsrot+1, c-hwsrot:c+hwsrot+1]
+    elif isinstance(img, gdal.Dataset):
+        template = img.ReadAsArray(xoff=c[0]-hwsrot,
+                                   yoff=r[0]-hwsrot,
+                                   xsize=hwsrot*2+1,
+                                   ysize=hwsrot*2+1)
+        
     templateRot = nd.interpolation.rotate(template, angle, order=order)
     templateRot = templateRot[rotBorder1:rotBorder2, rotBorder1:rotBorder2]
 
