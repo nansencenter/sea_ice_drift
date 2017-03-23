@@ -234,9 +234,9 @@ def get_drift_vectors(n1, x1, y1, n2, x2, y2, nsr=NSR(), **kwargs):
 
     # find displacement in needed units
     x1, y1 = d.transform_points(lon1, lat1, 1)
-    x2, y2 = d.transform_points(lon1, lat1, 1)
+    x2, y2 = d.transform_points(lon2, lat2, 1)
 
-    return x2-x1, y2-y1, lon1, lat1, lon2, lat2
+    return x2-x1, y1-y2, lon1, lat1, lon2, lat2
 
 def _fill_gpi(shape, gpi, data):
     ''' Fill 1D <data> into 2D matrix with <shape> based on 1D <gpi> '''
