@@ -64,7 +64,7 @@ def get_rotated_template(img, r, c, size, angle, order=1):
 
     # read large subimage
     if isinstance(img, np.ndarray):
-        template = img[r-hwsrot:r+hwsrot+1, c-hwsrot:c+hwsrot+1]
+        template = img[int(r-hwsrot):int(r+hwsrot+1), int(c-hwsrot):int(c+hwsrot+1)]
     elif isinstance(img, gdal.Dataset):
         template = img.ReadAsArray(xoff=int(c[0]-hwsrot),
                                    yoff=int(r[0]-hwsrot),
