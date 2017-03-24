@@ -167,8 +167,8 @@ def use_mcc(x1p, y1p, x2p, y2p, brd, img_size, img1, img2, alpha0, angles=[0]):
         a : float, angle that gives highest MCC
     '''
     hws = int(img_size / 2.)
-    image = img2[int(y2p-hws-brd:y2p+hws+brd+1),
-                 int(x2p-hws-brd:x2p+hws+brd+1)]
+    image = img2[int(y2p-hws-brd):int(y2p+hws+brd+1),
+                 int(x2p-hws-brd):int(x2p+hws+brd+1)]
     r,a,dx,dy,bestr,bestt = rotate_and_match(img1, x1p, y1p, img_size, image, alpha0, angles)
 
     x2 = x2p + dx
