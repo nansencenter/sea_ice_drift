@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from sea_ice_drift.lib import (get_uint8_image,
                                get_displacement_km,
+                               get_speed_ms,
                                get_displacement_pix,
                                get_denoised_object,
                                x2y2_interpolation_poly,
@@ -30,6 +31,7 @@ from sea_ice_drift.seaicedrift import SeaIceDrift
 __all__ = [
     'get_uint8_image',
     'get_displacement_km',
+    'get_speed_ms',
     'get_displacement_pix',
     'get_denoised_object',
     'x2y2_interpolation_poly',

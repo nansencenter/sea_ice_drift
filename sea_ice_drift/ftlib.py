@@ -19,7 +19,7 @@ import numpy as np
 
 import cv2
 
-from sea_ice_drift.lib import (get_displacement_km,
+from sea_ice_drift.lib import (get_speed_ms,
                                x2y2_interpolation_poly)
 
 def find_key_points(image, 
@@ -114,7 +114,7 @@ def _filter_matches(matches, ratio_test, keyPoints1, keyPoints2, verbose):
     y2 = np.array([keyPoints2[m.trainIdx].pt[1] for m in good])
     return x1, y1, x2, y2
 
-def domain_filter(n, keyPoints, descr, domain, domainMargin=0):
+def domain_filter(n, keyPoints, descr, domain, domainMargin=0, **kwargs):
     ''' Finds <keyPoints> from Nansat objects <n> which are within <domain>
     Parameters
     ----------
@@ -140,8 +140,8 @@ def domain_filter(n, keyPoints, descr, domain, domainMargin=0):
     print 'Domain filter: %d -> %d' % (len(keyPoints), len(gpi[gpi]))
     return list(np.array(keyPoints)[gpi]), descr[gpi]
 
-def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=20):
-    ''' Filter out too high drift (km)
+def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=2, **kwargs):
+    ''' Filter out too high drift (m/s)
     Parameters
     ----------
         n1 : First Nansat object
@@ -150,7 +150,7 @@ def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=20):
         n2 : Second Nansat object
         x2 : 1D vector - X coordinates of keypoints on image 2
         y2 : 1D vector - Y coordinates of keypoints on image 2
-        maxDrift : int - maxum allowed ice displacement, km
+        maxDrift : float - maximum allowed ice drift speed, m/s
     Returns
     -------
         x1 : 1D vector - filtered source X coordinates on img1, pix
@@ -158,8 +158,7 @@ def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=20):
         x2 : 1D vector - filtered destination X coordinates on img2, pix
         y2 : 1D vector - filtered destination Y coordinates on img2, pix
     '''
-    gpi = get_displacement_km(n1, x1, y1, n2, x2, y2) <= maxDrift
-
+    gpi = get_speed_ms(n1, x1, y1, n2, x2, y2) <= maxDrift
     print 'MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi]))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
@@ -195,7 +194,7 @@ def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, **kwargs):
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
 
-def feature_tracking(n1, n2, domainMargin=10, maxDrift=20, **kwargs):
+def feature_tracking(n1, n2, **kwargs):
     ''' Run Feature Tracking Algrotihm on two images
     Parameters
     ----------
@@ -219,14 +218,14 @@ def feature_tracking(n1, n2, domainMargin=10, maxDrift=20, **kwargs):
     kp2, descr2 = find_key_points(n2[1], **kwargs)
 
     # filter keypoints by Domain
-    kp1, descr1 = domain_filter(n1, kp1, descr1, n2, domainMargin)
-    kp2, descr2 = domain_filter(n2, kp2, descr2, n1, domainMargin)
+    kp1, descr1 = domain_filter(n1, kp1, descr1, n2, **kwargs)
+    kp2, descr2 = domain_filter(n2, kp2, descr2, n1, **kwargs)
 
     # find coordinates of matching key points
     x1, y1, x2, y2 = get_match_coords(kp1, descr1, kp2, descr2, **kwargs)
 
     # filter out pair with too high drift
-    x1, y1, x2, y2 = max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift)
+    x1, y1, x2, y2 = max_drift_filter(n1, x1, y1, n2, x2, y2, **kwargs)
 
     # filter out inconsistent pairs
     x1, y1, x2, y2 = lstsq_filter(x1, y1, x2, y2, **kwargs)

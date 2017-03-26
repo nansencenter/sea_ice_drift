@@ -66,6 +66,23 @@ def get_displacement_km(n1, x1, y1, n2, x2, y2):
          np.cos(lt1) * np.cos(lt2) * np.sin(dlon * 0.5) ** 2)
     return 2 * AVG_EARTH_RADIUS * np.arcsin(np.sqrt(d))
 
+def get_speed_ms(n1, x1, y1, n2, x2, y2):
+    ''' Find ice drift speed in m/s
+    Parameters
+    ----------
+        n1 : First Nansat object
+        x1 : 1D vector - X coordinates of keypoints on image 1
+        y1 : 1D vector - Y coordinates of keypoints on image 1
+        n2 : Second Nansat object
+        x1 : 1D vector - X coordinates of keypoints on image 2
+        y1 : 1D vector - Y coordinates of keypoints on image 2
+    Returns
+    -------
+        spd : 1D vector - speed, m/s
+    '''
+    dt = (n2.time_coverage_start - n1.time_coverage_start).total_seconds()
+    return 1000.*get_displacement_km(n1, x1, y1, n2, x2, y2)/abs(dt)
+
 def get_displacement_pix(n1, x1, y1, n2, x2, y2):
     ''' Find displacement in pixels of the first image
     Parameters
