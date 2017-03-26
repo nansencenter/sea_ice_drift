@@ -140,7 +140,7 @@ def domain_filter(n, keyPoints, descr, domain, domainMargin=0, **kwargs):
     print 'Domain filter: %d -> %d' % (len(keyPoints), len(gpi[gpi]))
     return list(np.array(keyPoints)[gpi]), descr[gpi]
 
-def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=2, **kwargs):
+def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=0.5, **kwargs):
     ''' Filter out too high drift (m/s)
     Parameters
     ----------
