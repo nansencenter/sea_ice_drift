@@ -219,7 +219,11 @@ def feature_tracking(n1, n2, **kwargs):
 
     # filter keypoints by Domain
     kp1, descr1 = domain_filter(n1, kp1, descr1, n2, **kwargs)
+    if len(kp1) == 0:
+        return (np.array([]),)*4
     kp2, descr2 = domain_filter(n2, kp2, descr2, n1, **kwargs)
+    if len(kp2) == 0:
+        return (np.array([]),)*4
 
     # find coordinates of matching key points
     x1, y1, x2, y2 = get_match_coords(kp1, descr1, kp2, descr2, **kwargs)
