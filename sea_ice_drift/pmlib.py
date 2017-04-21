@@ -220,8 +220,8 @@ def _init_pool(x1_dst, y1_dst, x2fg, y2fg, border, gpi, img_size,
     angles_shared = angles
     alpha0_shared = alpha0
 
-def prepare_first_guess(x1_dst, y1_dst, x1, y1, x2, y2, img1, img_size,
-                        min_border=20, max_border=50, **kwargs):
+def prepare_first_guess(x1_dst, y1_dst, n1, x1, y1, n2, x2, y2, img_size,
+                        min_fg_pts=5, min_border=20, max_border=50, **kwargs):
     ''' For the given coordinates estimate the First Guess
     Parameters
     ---------
@@ -244,33 +244,42 @@ def prepare_first_guess(x1_dst, y1_dst, x1, y1, x2, y2, img1, img_size,
         y2fg : 1D vector, first guess X coordinates of results on image 2
         border : 1D vector, searching distance
     '''
-    # interpolate 1st guess using 2nd order polynomial
-    x2p2, y2p2 = x2y2_interpolation_poly(x1, y1, x2, y2, x1_dst, y1_dst, **kwargs)
+    shape1 = n1.shape()
+    if len(x1) > min_fg_pts:
+        # interpolate 1st guess using 2nd order polynomial
+        x2p2, y2p2 = x2y2_interpolation_poly(x1, y1, x2, y2,
+                                             x1_dst, y1_dst, **kwargs)
 
-    # interpolate 1st guess using griddata
-    x2fg, y2fg = x2y2_interpolation_near(x1, y1, x2, y2, x1_dst, y1_dst, **kwargs)
+        # interpolate 1st guess using griddata
+        x2fg, y2fg = x2y2_interpolation_near(x1, y1, x2, y2,
+                                             x1_dst, y1_dst, **kwargs)
 
-    # find distance to nearest neigbour and create border matrix
-    border_img = get_distance_to_nearest_keypoint(x1, y1, img1.shape)
-    border = np.zeros(len(x1_dst)) + max_border
-    gpi = ((x1_dst >= 0) * (x1_dst < img1.shape[1]) *
-           (y1_dst >= 0) * (y1_dst < img1.shape[0]))
-    border[gpi] = border_img[y1_dst.astype(np.int16)[gpi],
-                             x1_dst.astype(np.int16)[gpi]]
+        # find distance to nearest neigbour and create border matrix
+        border_img = get_distance_to_nearest_keypoint(x1, y1, shape1)
+        border = np.zeros(len(x1_dst)) + max_border
+        gpi = ((x1_dst >= 0) * (x1_dst < shape1[1]) *
+               (y1_dst >= 0) * (y1_dst < shape1[0]))
+        border[gpi] = border_img[y1_dst.astype(np.int16)[gpi],
+                                 x1_dst.astype(np.int16)[gpi]]
 
-    # define searching distance
-    border[border < min_border] = min_border
-    border[border > max_border] = max_border
-    border[np.isnan(y2fg)] = max_border
+        # define searching distance
+        border[border < min_border] = min_border
+        border[border > max_border] = max_border
+        border[np.isnan(y2fg)] = max_border
 
-    # define FG based on P2 and GD
-    x2fg[np.isnan(x2fg)] = x2p2[np.isnan(x2fg)]
-    y2fg[np.isnan(y2fg)] = y2p2[np.isnan(y2fg)]
-
+        # define FG based on P2 and GD
+        x2fg[np.isnan(x2fg)] = x2p2[np.isnan(x2fg)]
+        y2fg[np.isnan(y2fg)] = y2p2[np.isnan(y2fg)]
+    else:
+        lon_dst, lat_dst = n1.transform_points(x1_dst, y1_dst)
+        x2fg, y2fg = n2.transform_points(lon_dst, lat_dst, 1)
+        border = np.zeros(len(x1_dst)) + max_border*2
+        
     return x2fg, y2fg, border
 
 def pattern_matching(lon1_dst, lat1_dst,
                      n1, x1, y1, n2, x2, y2,
+                     margin=0,
                      img_size=35, threads=5, angles=range(-15,16,3),
                      **kwargs):
     ''' Run Pattern Matching Algorithm on two images
@@ -298,29 +307,39 @@ def pattern_matching(lon1_dst, lat1_dst,
         a : 1D vector, angle that gives the highes MCC
         lon2_dst : 1D vector, longitude of results on image 2
         lat2_dst : 1D vector, latitude  of results on image 2
-    '''    
+    '''
+    img1, img2 = n1[1], n2[1]
     # convert lon/lat to pixe/line of the first image
     x1_dst, y1_dst = n1.transform_points(lon1_dst.flatten(), lat1_dst.flatten(), 1)
 
     x2fg, y2fg, border = prepare_first_guess(x1_dst, y1_dst,
-                                             x1, y1, x2, y2, n1[1],
+                                             n1, x1, y1,
+                                             n2, x2, y2,
                                              img_size,
                                              **kwargs)
     # find good input points
     hws = img_size / 2
     hws_hypot = np.hypot(hws, hws)
-    gpi = ((x2fg-border-hws > 0) * (x2fg+border+hws < n2.shape()[1]) *
-           (y2fg-border-hws > 0) * (y2fg+border+hws < n2.shape()[0]) *
-           (x1_dst-hws_hypot > 0) * (x1_dst+hws_hypot < n1.shape()[1]) *
-           (y1_dst-hws_hypot > 0) * (y1_dst+hws_hypot < n1.shape()[1]))
+    gpi = ((x2fg-border-hws-margin > 0) * 
+           (y2fg-border-hws-margin > 0) *
+           (x2fg+border+hws+margin < n2.shape()[1]) *
+           (y2fg+border+hws+margin < n2.shape()[0]) *
+           (x1_dst-hws_hypot-margin > 0) *
+           (y1_dst-hws_hypot-margin > 0) *
+           (x1_dst+hws_hypot+margin < n1.shape()[1]) *
+           (y1_dst+hws_hypot+margin < n1.shape()[1]))
 
     alpha0 = get_initial_rotation(n1, n2)
 
     # run MCC in multiple threads
     p = Pool(threads, initializer=_init_pool,
             initargs=(x1_dst, y1_dst, x2fg, y2fg, border, gpi,
-            img_size, n1[1], n2[1], alpha0, angles))
+            img_size, img1, img2, alpha0, angles))
     results = p.map(use_mcc_mp, range(len(gpi[gpi])))
+    p.close()
+    p.terminate()
+    p.join()
+    del p
     
     x2_dst = np.array(results)[:,0]
     y2_dst = np.array(results)[:,1]
