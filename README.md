@@ -2,8 +2,7 @@
 [![Coverage Status](https://coveralls.io/repos/nansencenter/sea_ice_drift/badge.svg?branch=master)](https://coveralls.io/r/nansencenter/sea_ice_drift)
 [![DOI](https://zenodo.org/badge/46479183.svg)](https://zenodo.org/badge/latestdoi/46479183)
 
-# sea_ice_drift
-##Sea ice drift from Sentinel-1 SAR data
+## Sea ice drift from Sentinel-1 SAR data
 
 A computationally efficient, open source feature tracking algorithm, 
 called ORB, is adopted and tuned for retrieval of the first guess
@@ -24,7 +23,7 @@ regular grid.
  * Install OpenCV (e.g. using [miniconda](http://conda.pydata.org/miniconda.html): `conda install -c conda-forge opencv`
  * Use pip to install from the repo:
 ```
-pip install https://github.com/nansencenter/sea_ice_drift/archive/add_mcc_functions.zip
+pip install https://github.com/nansencenter/sea_ice_drift/archive/v0.4.tar.gz
 ```
 
 ## Example
