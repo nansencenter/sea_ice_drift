@@ -23,7 +23,7 @@ regular grid.
  * Install OpenCV (e.g. using [miniconda](http://conda.pydata.org/miniconda.html): `conda install -c conda-forge opencv`
  * Use pip to install from the repo:
 ```
-pip install https://github.com/nansencenter/sea_ice_drift/archive/v0.4.tar.gz
+pip install https://github.com/nansencenter/sea_ice_drift/archive/v0.5.tar.gz
 ```
 
 ## Example
