@@ -67,13 +67,14 @@ s02 = sid.n2['sigma0_HV']
 # plot the projected image from the first SAR scene
 plt.imshow(s01, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
 # plot vectors of sea ice drift from Feature Tracking
-plt.quiver(lon1ft, lat1ft, uft, vft, color='r', scale=0.7)
+plt.quiver(lon1ft, lat1ft, uft, vft, color='r',
+           angles='xy', scale_units='xy', scale=0.5)
 # plot border of the second SAR scene
 plt.plot(lon2, lat2, '.-r')
 # set X/Y limits of figure
 plt.xlim([-3, 2])
 plt.ylim([86.4, 86.8])
-plt.savefig('sea_ice_drift_FT_img1.png', dpi=75, bbox_inches='tight', pad_inches=0)
+plt.savefig('sea_ice_drift_FT_img1.png', dpi=150, bbox_inches='tight', pad_inches=0)
 plt.close('all')
 
 # plot the projected image from the second SAR scene
@@ -81,11 +82,12 @@ plt.imshow(s02, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
 # filter only high quality pixels
 gpi = rpm > 0.4
 # plot vectors of sea ice drift from Feature Tracking, color by MCC
-plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi], scale=0.7)
+plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi],
+           angles='xy', scale_units='xy', scale=0.5)
 # plot border of the first SAR scene
 plt.plot(lon1, lat1, '.-r')
 # set X/Y limits of figure
 plt.xlim([-3, 2])
 plt.ylim([86.4, 86.8])
-plt.savefig('sea_ice_drift_PM_img2.png', dpi=75, bbox_inches='tight', pad_inches=0)
+plt.savefig('sea_ice_drift_PM_img2.png', dpi=150, bbox_inches='tight', pad_inches=0)
 plt.close('all')

@@ -186,7 +186,7 @@ class SeaIceDriftLibTests(unittest.TestCase):
     def test_fill_gpi(self):
         a = np.array([[1,2,3],[1,2,3],[1,2,3]])
         gpi = (a > 2)
-        b = _fill_gpi(a.shape, a[gpi].flatten(), gpi.flatten())
+        b = _fill_gpi(a.shape, gpi.flatten(), a[gpi].flatten())
         self.assertEqual(a.shape, b.shape)
         
 
@@ -340,7 +340,8 @@ class SeaIceDriftClassTests(SeaIceDriftLibTests):
         s02 = sid.n2['sigma0_HV']
 
         plt.imshow(s01, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
-        plt.quiver(lon1ft, lat1ft, uft, vft, color='r')
+        plt.quiver(lon1ft, lat1ft, uft, vft, color='r',
+                   angles='xy', scale_units='xy', scale=0.5)
         plt.plot(lon2, lat2, '.-r')
         plt.xlim([-3, 2])
         plt.ylim([86.4, 86.8])
@@ -350,7 +351,8 @@ class SeaIceDriftClassTests(SeaIceDriftLibTests):
 
         plt.imshow(s02, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
         gpi = rpm > 0.4
-        plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi])
+        plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi],
+                   angles='xy', scale_units='xy', scale=0.5)
         plt.plot(lon1, lat1, '.-r')
         plt.xlim([-3, 2])
         plt.ylim([86.4, 86.8])

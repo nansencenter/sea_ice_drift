@@ -247,7 +247,7 @@ def get_drift_vectors(n1, x1, y1, n2, x2, y2, nsr=NSR(), **kwargs):
     lon2, lat2 = n2.transform_points(x2, y2)
     
     # create domain that converts lon/lat to units of the projection
-    d = Domain(nsr, '-te -100 -100 100 100 -tr 1 1')
+    d = Domain(nsr, '-te -10 -10 10 10 -tr 1 1')
 
     # find displacement in needed units
     x1, y1 = d.transform_points(lon1, lat1, 1)

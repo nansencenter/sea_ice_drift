@@ -1,10 +1,8 @@
 from setuptools import setup
 
-import_error_msg = "Sea Ice Drift requires %s, which should be installed separately"
-
 setup(
     name = "sea_ice_drift",
-    version = "0.4",
+    version = "0.5",
     author = ('Anton Korosov', 'Stefan Muckenhuber'),
     author_email = "anton.korosov@nersc.no",
     description = ("Drift of sea ice from satellite data using feature tracking and pattern matching methods"),
@@ -12,7 +10,7 @@ setup(
     license = "GNU General Public License v3",
     keywords = "sar, feature tracking, pattern matching, ice drift",
     url = "https://github.com/nansencenter/sea_ice_drift",
-    download_url='https://github.com/nansencenter/sea_ice_drift/archive/v0.4.tar.gz',
+    download_url='https://github.com/nansencenter/sea_ice_drift/archive/v0.5.tar.gz',
     packages=['sea_ice_drift'],
     test_suite="sea_ice_drift.tests",
     classifiers=[
