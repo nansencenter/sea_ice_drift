@@ -1,3 +1,8 @@
+language: python
+python:
+  - "2.7"
+  - "3.6"
+
 before_install:
   - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O $HOME/miniconda.sh
   - chmod +x $HOME/miniconda.sh
@@ -8,11 +13,10 @@ before_install:
   - export ICE_DRIFT_TEST_DATA_DIR=./
 
 install:
-  - conda install -q --yes -c conda-forge numpy scipy matplotlib nose pillow basemap netcdf4 gdal opencv
-  - python -c 'import gdal; print gdal.__file__'
-  - python -c 'from mpl_toolkits.basemap import Basemap'
-  - pip install coveralls
-  - pip install cfunits
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
+  - source activate test-environment
+  - conda install -q --yes -c conda-forge numpy scipy matplotlib pillow basemap netcdf4 gdal opencv coverage nose
+  - pip install https://github.com/nansencenter/py-thesaurus-interface/archive/master.zip
   - pip install https://github.com/nansencenter/nansat/archive/master.tar.gz
   - python setup.py install
 
