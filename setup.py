@@ -28,5 +28,8 @@ setup(
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Information Analysis',
         'Topic :: Utilities',
+        'Topic :: Scientific/Engineering :: Physics',
+        'Topic :: Scientific/Engineering :: Image Recognition',
+        'Intended Audience :: Science/Research',
     ],
 )
