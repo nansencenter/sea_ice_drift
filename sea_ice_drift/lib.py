@@ -217,6 +217,7 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
     img = get_uint8_image(img, vmin, vmax)
 
     nout = Nansat(domain=n, array=img, parameters={'name': bandName})
+    nout.set_metadata(n.get_metadata())
     # improve geonetric accuracy
     nout.reproject_GCPs()
     nout.vrt.tps = True
@@ -245,7 +246,7 @@ def get_drift_vectors(n1, x1, y1, n2, x2, y2, nsr=NSR(), **kwargs):
     # convert x,y to lon, lat
     lon1, lat1 = n1.transform_points(x1, y1)
     lon2, lat2 = n2.transform_points(x2, y2)
-    
+
     # create domain that converts lon/lat to units of the projection
     d = Domain(nsr, '-te -10 -10 10 10 -tr 1 1')
 

@@ -48,7 +48,7 @@ lon1pm, lat1pm = np.meshgrid(np.linspace(-3, 2, 50),
 
 # apply Pattern Matching and find sea ice drift speed
 # for the given grid of points
-upm, vpm, rpm, apm, lon2pm, lat2pm = sid.get_drift_PM(
+upm, vpm, rpm, apm, hpm, lon2pm, lat2pm = sid.get_drift_PM(
                                     lon1pm, lat1pm,
                                     lon1ft, lat1ft,
                                     lon2ft, lat2ft)
