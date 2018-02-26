@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name = "sea_ice_drift",
     version = "0.5",
-    author = ('Anton Korosov', 'Stefan Muckenhuber'),
+    author = 'Anton Korosov, Stefan Muckenhuber',
     author_email = "anton.korosov@nersc.no",
     description = ("Drift of sea ice from satellite data using feature tracking and pattern matching methods"),
     long_description = ("Drift of sea ice from satellite data using feature tracking and pattern matching methods"),
