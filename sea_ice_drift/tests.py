@@ -119,7 +119,7 @@ class SeaIceDriftLibTests(unittest.TestCase):
                            'sigma0_HV', 0.5, 0.001, 0.013, False, False)
         n = get_n(self.testFiles[0],
                            'sigma0_HV', 0.5, -20, -15, False, True)
-        
+
         self.assertIsInstance(n, Nansat)
         self.assertEqual(n[1].dtype, np.uint8)
         self.assertEqual(n[1].min(), 0)
@@ -147,7 +147,7 @@ class SeaIceDriftLibTests(unittest.TestCase):
         plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name)
         plt.close('all')
         self.assertEqual(len(x2p1), len(x1))
-        
+
     def test_x2y2_interpolation_near(self):
         img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
         img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
@@ -188,7 +188,7 @@ class SeaIceDriftLibTests(unittest.TestCase):
         gpi = (a > 2)
         b = _fill_gpi(a.shape, gpi.flatten(), a[gpi].flatten())
         self.assertEqual(a.shape, b.shape)
-        
+
 
 class SeaIceDriftFTLibTests(SeaIceDriftLibTests):
     def test_find_key_points(self):
@@ -274,7 +274,7 @@ class SeaIceDriftPMLibTests(SeaIceDriftLibTests):
         plt.imshow(temp_rot10, interpolation='nearest')
         plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name)
         plt.close('all')
-    
+
         self.assertEqual(temp_rot00.shape, (50,50))
         self.assertEqual(temp_rot10.shape, (50,50))
 
@@ -286,7 +286,7 @@ class SeaIceDriftPMLibTests(SeaIceDriftLibTests):
         keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
-        
+
         dist = get_distance_to_nearest_keypoint(x1, y1, img1.shape)
         plt.imsave('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name,
                     dist)
@@ -300,12 +300,13 @@ class SeaIceDriftPMLibTests(SeaIceDriftLibTests):
         self.assertIsInstance(alpha12, float)
         self.assertAlmostEqual(alpha12, -alpha21, 1)
         self.assertAlmostEqual(alpha12, 60.91682335, 1)
-    
+
     def test_rotate_and_match(self):
         ''' shall rotate and match'''
         n1 = get_n(self.testFiles[0])
         n2 = get_n(self.testFiles[1])
-        (best_r, best_a, dx, dy,
+        (best_r, best_a, best_h,
+         dx, dy,
          best_result, best_template) = rotate_and_match(
                          n1[1],300,100,50,n2[1],60,[-2,-1,0,1,2])
         plt.subplot(1,3,1)
@@ -314,11 +315,11 @@ class SeaIceDriftPMLibTests(SeaIceDriftLibTests):
         plt.imshow(best_result, interpolation='nearest', vmin=0)
         plt.subplot(1,3,3)
         plt.imshow(best_template, interpolation='nearest')
-        plt.suptitle('%f  %f %f  %f' % (best_r, best_a, dx, dy))
+        plt.suptitle('%f %f %f %f %f' % (best_r, best_a, best_h, dx, dy))
         plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name,)
         plt.close('all')
-        
-        
+
+
 class SeaIceDriftClassTests(SeaIceDriftLibTests):
     def test_integrated(self):
         ''' Shall use all developed functions for feature tracking'''
@@ -327,7 +328,7 @@ class SeaIceDriftClassTests(SeaIceDriftLibTests):
 
         sid = SeaIceDrift(self.testFiles[0], self.testFiles[1])
         uft, vft, lon1ft, lat1ft, lon2ft, lat2ft = sid.get_drift_FT()
-        upm, vpm, rpm, apm, lon2pm, lat2pm = sid.get_drift_PM(
+        upm, vpm, rpm, apm, hpm, lon2pm, lat2pm = sid.get_drift_PM(
                                             lon1pm, lat1pm,
                                             lon1ft, lat1ft,
                                             lon2ft, lat2ft)

@@ -8,7 +8,6 @@ before_install:
   - export ICE_DRIFT_TEST_DATA_DIR=./
 
 install:
-  - conda update -q --yes conda
   - conda install -q --yes -c conda-forge numpy scipy matplotlib nose pillow basemap netcdf4 gdal opencv
   - python -c 'import gdal; print gdal.__file__'
   - python -c 'from mpl_toolkits.basemap import Basemap'
