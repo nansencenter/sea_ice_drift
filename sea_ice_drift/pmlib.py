@@ -89,7 +89,7 @@ def get_rotated_template(img, r, c, size, angle, order=1):
                                    yoff=int(r[0]-hwsrot),
                                    xsize=int(hwsrot*2+1),
                                    ysize=int(hwsrot*2+1))
-        
+
     templateRot = nd.interpolation.rotate(template, angle, order=order)
     templateRot = templateRot[rotBorder1:rotBorder2, rotBorder1:rotBorder2]
 
@@ -160,7 +160,7 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0, angles=[0],
             best_result = result
             best_template = template
             best_ij = ij
-    
+
     best_h = get_hessian(best_result, **kwargs)[best_ij]
     dy = best_ij[0] - (image.shape[0] - template.shape[0]) / 2.
     dx = best_ij[1] - (image.shape[1] - template.shape[1]) / 2.
@@ -229,9 +229,9 @@ def use_mcc_mp(i):
                    hesnorm=hesnorm_shared,
                    hessmth=hessmth_shared)
     if i % 10 == 0:
-        print '%02.0f%% %07.1f %07.1f %07.1f %07.1f %02.1f %+05.1f %+06.2f' % (
-        100 * float(i) / len(x1_dst_shared), 
-         x1_dst_shared[i], y1_dst_shared[i], x2, y2, r, a, h)
+        print('%02.0f%% %07.1f %07.1f %07.1f %07.1f %02.1f %+05.1f %+06.2f' % (
+        100 * float(i) / len(x1_dst_shared),
+         x1_dst_shared[i], y1_dst_shared[i], x2, y2, r, a, h))
     return x2, y2, r, a, h
 
 def _init_pool(x1_dst, y1_dst, x2fg, y2fg, border, gpi, img_size,
@@ -257,7 +257,7 @@ def _init_pool(x1_dst, y1_dst, x2fg, y2fg, border, gpi, img_size,
     hessmth_shared = hessmth
 
 def prepare_first_guess(x1_dst, y1_dst, n1, x1, y1, n2, x2, y2, img_size,
-                        min_fg_pts=5, min_border=20, max_border=50, 
+                        min_fg_pts=5, min_border=20, max_border=50,
                         old_border=True, **kwargs):
     ''' For the given coordinates estimate the First Guess
     Parameters
@@ -328,7 +328,7 @@ def prepare_first_guess(x1_dst, y1_dst, n1, x1, y1, n2, x2, y2, img_size,
         lon_dst, lat_dst = n1.transform_points(x1_dst, y1_dst)
         x2fg, y2fg = n2.transform_points(lon_dst, lat_dst, 1)
         border = np.zeros(len(x1_dst)) + max_border*2
-        
+
     return x2fg, y2fg, border
 
 def pattern_matching(lon1_dst, lat1_dst,
@@ -341,10 +341,10 @@ def pattern_matching(lon1_dst, lat1_dst,
     ---------
         lon_dst : 1D vector, longitude of results on image 1
         lon_dst : 1D vector, latitude of results on image 1
-        n1 : Nansat, the fist image with 2D array        
+        n1 : Nansat, the fist image with 2D array
         x1 : 1D vector, X coordinates of keypoints on image 1
         y1 : 1D vector, Y coordinates of keypoints on image 1
-        n2 : Nansat, the second image with 2D array        
+        n2 : Nansat, the second image with 2D array
         x2 : 1D vector, X coordinates of keypoints on image 2
         y2 : 1D vector, Y coordinates of keypoints on image 2
         img_size : int, size of template
@@ -377,7 +377,7 @@ def pattern_matching(lon1_dst, lat1_dst,
     # find good input points
     hws = img_size / 2
     hws_hypot = np.hypot(hws, hws)
-    gpi = ((x2fg-border-hws-margin > 0) * 
+    gpi = ((x2fg-border-hws-margin > 0) *
            (y2fg-border-hws-margin > 0) *
            (x2fg+border+hws+margin < n2.shape()[1]) *
            (y2fg+border+hws+margin < n2.shape()[0]) *
@@ -397,7 +397,7 @@ def pattern_matching(lon1_dst, lat1_dst,
     p.terminate()
     p.join()
     del p
-    
+
     results = np.array(results)
     x2_dst = results[:,0]
     y2_dst = results[:,1]
@@ -416,7 +416,7 @@ def pattern_matching(lon1_dst, lat1_dst,
     r = _fill_gpi(lon1_dst.shape, gpi, r)
     a = _fill_gpi(lon1_dst.shape, gpi, a)
     h = _fill_gpi(lon1_dst.shape, gpi, h)
-    
+
     return u, v, r, a, h, lon2_dst, lat2_dst
 
-    
+
