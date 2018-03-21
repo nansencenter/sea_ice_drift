@@ -30,17 +30,17 @@ from sea_ice_drift.lib import (x2y2_interpolation_poly,
 shared_args = None
 shared_kwargs = None
 
-def get_hessian(ccm, hesnorm=True, hessmth=False, **kwargs):
+def get_hessian(ccm, hes_norm=True, hes_smth=False, **kwargs):
     """ Find Hessian of the input cross correlation matrix <ccm>
 
     Parameters
     ----------
     ccm : 2D numpy array, cross-correlation matrix
-    hesnorm : bool, normalize Hessian by AVG and STD?
-    hessmth : bool, smooth Hessian?
+    hes_norm : bool, normalize Hessian by AVG and STD?
+    hes_smth : bool, smooth Hessian?
 
     """
-    if hessmth:
+    if hes_smth:
         ccm2 = nd.filters.gaussian_filter(ccm, 1)
     else:
         ccm2 = ccm
@@ -50,7 +50,7 @@ def get_hessian(ccm, hesnorm=True, hessmth=False, **kwargs):
     d2cc_dx2 = np.gradient(dcc_dx)[1]
     d2cc_dy2 = np.gradient(dcc_dy)[0]
     hes = np.hypot(d2cc_dx2, d2cc_dy2)
-    if hesnorm:
+    if hes_norm:
         hes = (hes - np.median(hes)) / np.std(hes)
 
     return hes
@@ -124,7 +124,9 @@ def get_initial_rotation(n1, n2):
 def rotate_and_match(img1, x, y, img_size, image, alpha0,
                      angles=[-3,0,3],
                      mtype=cv2.TM_CCOEFF_NORMED,
-                     template_matcher=cv2.matchTemplate, **kwargs):
+                     template_matcher=cv2.matchTemplate,
+                     mcc_norm=False,
+                     **kwargs):
     ''' Rotate template in a range of angles and run MCC for each
     Parameters
     ----------
@@ -137,6 +139,7 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0,
         angles : list - which angles to test
         mtype : int - type of cross-correlation
         template_matcher : func - function to use for template matching
+        mcc_norm : bool, normalize MCC by AVG and STD ?
         kwargs : dict, params for get_hessian
     Returns
     -------
@@ -166,10 +169,13 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0,
     dy = best_ij[0] - (image.shape[0] - template.shape[0]) / 2.
     dx = best_ij[1] - (image.shape[1] - template.shape[1]) / 2.
 
+    if mcc_norm:
+        best_r = (best_r - np.median(best_result)) / np.std(best_result)
+
     return best_r, best_a, best_h, dx, dy, best_result, best_template
 
 def use_mcc(x1p, y1p, x2p, y2p, border, img1, img2, img_size, alpha0, **kwargs):
-    ''' Apply MCC algorithm for one point
+    """ Apply MCC algorithm for one point
 
     Parameters
     ----------
@@ -190,7 +196,8 @@ def use_mcc(x1p, y1p, x2p, y2p, border, img1, img2, img_size, alpha0, **kwargs):
         r : float, MCC
         a : float, angle that gives highest MCC
         h : float, Hessian of CC at MCC point
-    '''
+
+    """
     hws = int(img_size / 2.)
     image = img2[int(y2p-hws-border):int(y2p+hws+border+1),
                  int(x2p-hws-border):int(x2p+hws+border+1)]
@@ -204,7 +211,7 @@ def use_mcc(x1p, y1p, x2p, y2p, border, img1, img2, img_size, alpha0, **kwargs):
     return x2, y2, r, a, h
 
 def use_mcc_mp(i):
-    ''' Use MCC in multiprocessing
+    """ Use MCC in multiprocessing
     Uses global variables where first guess and images are stored
     Parameters
     ---------
@@ -216,7 +223,8 @@ def use_mcc_mp(i):
         r : float, MCC
         a : float, angle that gives highest MCC
         h : float, Hessian of CC at MCC point
-    '''
+
+    """
     global shared_args, shared_kwargs
 
     # structure of shared_args:
@@ -345,9 +353,10 @@ def pattern_matching(lon1_dst, lat1_dst,
                 angles : list - which angles to test
                 mtype : int - type of cross-correlation
                 template_matcher : func - function to use for template matching
+                mcc_norm : bool, normalize MCC by AVG and STD ?
             get_hessian
-                hesnorm : bool, normalize Hessian by AVG and STD?
-                hessmth : bool, smooth Hessian?
+                hes_norm : bool, normalize Hessian by AVG and STD?
+                hes_smth : bool, smooth Hessian?
             get_drift_vectors
                 nsr: Nansat.NSR(), projection that defines the grid
     Returns
@@ -383,11 +392,11 @@ def pattern_matching(lon1_dst, lat1_dst,
 
     alpha0 = get_initial_rotation(n1, n2)
 
-    def _init_pool(*args, **kwargs):
+    def _init_pool(*args):
         """ Initialize shared data for multiprocessing """
         global shared_args, shared_kwargs
-        shared_args = args
-        shared_kwargs = kwargs
+        shared_args = args[:9]
+        shared_kwargs = args[9]
 
     # run MCC in multiple threads
     p = Pool(threads, initializer=_init_pool,
