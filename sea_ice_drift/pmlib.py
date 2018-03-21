@@ -27,21 +27,19 @@ from sea_ice_drift.lib import (x2y2_interpolation_poly,
                                get_drift_vectors,
                                _fill_gpi)
 
-x1_dst_shared = None
-y1_dst_shared = None
-x2fg_shared = None
-y2fg_shared = None
-border_shared = None
-img_size_shared = None
-img1_shared = None
-img2_shared = None
-angles_shared = None
-alpha0_shared = None
-hesnorm_shared = None
-hessmth_shared = None
+shared_args = None
+shared_kwargs = None
 
-def get_hessian(ccm, hesnorm=True, hessmth=False):
-    ''' Find Hessian of the input cross correlation matrix <ccm> '''
+def get_hessian(ccm, hesnorm=True, hessmth=False, **kwargs):
+    """ Find Hessian of the input cross correlation matrix <ccm>
+
+    Parameters
+    ----------
+    ccm : 2D numpy array, cross-correlation matrix
+    hesnorm : bool, normalize Hessian by AVG and STD?
+    hessmth : bool, smooth Hessian?
+
+    """
     if hessmth:
         ccm2 = nd.filters.gaussian_filter(ccm, 1)
     else:
@@ -62,12 +60,12 @@ def get_rotated_template(img, r, c, size, angle, order=1):
     ''' Get rotated template of a given size
     Parameters
     ----------
-        img : 2D numpy array - original image
-        r : int - row coordinate of center
-        c : int - column coordinate of center
-        size : int - template size
-        angle : float - rotation angle
-        order : resampling order
+    img : 2D numpy array - original image
+    r : int - row coordinate of center
+    c : int - column coordinate of center
+    size : int - template size
+    angle : float - rotation angle
+    order : resampling order
     Returns
     -------
         templateRot : 2D numpy array - rotated subimage
@@ -123,8 +121,10 @@ def get_initial_rotation(n1, n2):
     alpha = np.degrees(np.arctan2(b, a)[0])
     return alpha
 
-def rotate_and_match(img1, x, y, img_size, image, alpha0, angles=[0],
-                     mtype=cv2.TM_CCOEFF_NORMED, **kwargs):
+def rotate_and_match(img1, x, y, img_size, image, alpha0,
+                     angles=[-3,0,3],
+                     mtype=cv2.TM_CCOEFF_NORMED,
+                     template_matcher=cv2.matchTemplate, **kwargs):
     ''' Rotate template in a range of angles and run MCC for each
     Parameters
     ----------
@@ -136,6 +136,7 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0, angles=[0],
         alpha0 : float - angle of rotation between two SAR scenes
         angles : list - which angles to test
         mtype : int - type of cross-correlation
+        template_matcher : func - function to use for template matching
         kwargs : dict, params for get_hessian
     Returns
     -------
@@ -152,7 +153,7 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0, angles=[0],
         template = get_rotated_template(img1, y, x, img_size, angle-alpha0)
         if template.shape[0] < img_size or template.shape[1] < img_size:
             return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
-        result = cv2.matchTemplate(image, template.astype(np.uint8), mtype)
+        result = template_matcher(image, template.astype(np.uint8), mtype)
         ij = np.unravel_index(np.argmax(result), result.shape)
         if result.max() > best_r:
             best_r = result.max()
@@ -167,18 +168,19 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0, angles=[0],
 
     return best_r, best_a, best_h, dx, dy, best_result, best_template
 
-def use_mcc(x1p, y1p, x2p, y2p, brd, img_size, img1, img2, alpha0, **kwargs):
+def use_mcc(x1p, y1p, x2p, y2p, border, img1, img2, img_size, alpha0, **kwargs):
     ''' Apply MCC algorithm for one point
+
     Parameters
     ----------
         x1p : float, X coordinate on image 1
         y1p : float, Y coordinate on image 1
         x2p : float, first guess X coordinate on image 2
         y2p : float, first guess Y coordinate on image 2
-        brd : int, searching distance (border around template)
-        img_size : int, template size
+        border : int, searching distance (border around template)
         img1 : 2D array - full szie image 1
         img2 : 2D array - full szie image 2
+        img_size : int, template size
         alpha0 : float, rotation between two images
         kwargs : dict, params for rotate_and_match, get_hessian
     Returns
@@ -190,8 +192,8 @@ def use_mcc(x1p, y1p, x2p, y2p, brd, img_size, img1, img2, alpha0, **kwargs):
         h : float, Hessian of CC at MCC point
     '''
     hws = int(img_size / 2.)
-    image = img2[int(y2p-hws-brd):int(y2p+hws+brd+1),
-                 int(x2p-hws-brd):int(x2p+hws+brd+1)]
+    image = img2[int(y2p-hws-border):int(y2p+hws+border+1),
+                 int(x2p-hws-border):int(x2p+hws+border+1)]
     r, a, h, dx, dy, bestr, bestt = rotate_and_match(img1, x1p, y1p,
                                                      img_size, image,
                                                      alpha0, **kwargs)
@@ -206,7 +208,7 @@ def use_mcc_mp(i):
     Uses global variables where first guess and images are stored
     Parameters
     ---------
-        i : int, index of poin
+        i : int, index of point
     Returns
     -------
         x2 : float, result X coordinate on image 2
@@ -215,49 +217,30 @@ def use_mcc_mp(i):
         a : float, angle that gives highest MCC
         h : float, Hessian of CC at MCC point
     '''
-    global x1_dst_shared, y1_dst_shared
-    global x2fg_shared, y2fg_shared, border_shared
-    global img_size_shared, img1_shared, img2_shared
-    global alpha0_shared, angles_shared
-    global hesnorm_shared, hessmth_shared
+    global shared_args, shared_kwargs
 
-    x2, y2, r, a, h = use_mcc(x1_dst_shared[i], y1_dst_shared[i],
-                   x2fg_shared[i], y2fg_shared[i], border_shared[i],
-                   img_size_shared,
-                   img1_shared, img2_shared, alpha0_shared,
-                   angles=angles_shared,
-                   hesnorm=hesnorm_shared,
-                   hessmth=hessmth_shared)
+    # structure of shared_args:
+    # x1_dst, y1_dst, x2fg, y2fg, border, img1, img2, img_size, alpha0
+    x2, y2, r, a, h = use_mcc(shared_args[0][i],
+                              shared_args[1][i],
+                              shared_args[2][i],
+                              shared_args[3][i],
+                              shared_args[4][i],
+                              shared_args[5],
+                              shared_args[6],
+                              shared_args[7],
+                              shared_args[8],
+                              **shared_kwargs)
     if i % 10 == 0:
-        print('%02.0f%% %07.1f %07.1f %07.1f %07.1f %02.1f %+05.1f %+06.2f' % (
-        100 * float(i) / len(x1_dst_shared),
-         x1_dst_shared[i], y1_dst_shared[i], x2, y2, r, a, h))
+        print('%02.0f%% %07.1f %07.1f %07.1f %07.1f %02.1f %03.2f %+05.1f' % (
+        100 * float(i) / len(shared_args[0]),
+         shared_args[0][i], shared_args[1][i], x2, y2, r, h, a))
     return x2, y2, r, a, h
 
-def _init_pool(x1_dst, y1_dst, x2fg, y2fg, border, gpi, img_size,
-              img1, img2, alpha0, angles, hesnorm, hessmth):
-    ''' Initialize data for multiprocessing '''
-    global x1_dst_shared, y1_dst_shared
-    global x2fg_shared, y2fg_shared, border_shared
-    global img_size_shared, img1_shared, img2_shared
-    global angles_shared, alpha0_shared
-    global hesnorm_shared, hessmth_shared
-
-    x1_dst_shared = x1_dst[gpi]
-    y1_dst_shared = y1_dst[gpi]
-    x2fg_shared = x2fg[gpi]
-    y2fg_shared = y2fg[gpi]
-    border_shared = border[gpi]
-    img_size_shared = img_size
-    img1_shared = img1
-    img2_shared = img2
-    angles_shared = angles
-    alpha0_shared = alpha0
-    hesnorm_shared = hesnorm
-    hessmth_shared = hessmth
-
 def prepare_first_guess(x1_dst, y1_dst, n1, x1, y1, n2, x2, y2, img_size,
-                        min_fg_pts=5, min_border=20, max_border=50,
+                        min_fg_pts=5,
+                        min_border=20,
+                        max_border=50,
                         old_border=True, **kwargs):
     ''' For the given coordinates estimate the First Guess
     Parameters
@@ -270,8 +253,10 @@ def prepare_first_guess(x1_dst, y1_dst, n1, x1, y1, n2, x2, y2, img_size,
         y2 : 1D vector, Y coordinates of keypoints on image 2
         img1 : 2D array, the fist image
         img_size : int, size of template
+        min_fg_pts : int, minimum number of fist guess points
         min_border : int, minimum searching distance
         max_border : int, maximum searching distance
+        old_border : bool, use old border selection algorithm?
         **kwargs : parameters for:
             x2y2_interpolation_poly
             x2y2_interpolation_near
@@ -334,8 +319,9 @@ def prepare_first_guess(x1_dst, y1_dst, n1, x1, y1, n2, x2, y2, img_size,
 def pattern_matching(lon1_dst, lat1_dst,
                      n1, x1, y1, n2, x2, y2,
                      margin=0,
-                     img_size=35, threads=5, angles=range(-15,16,3),
-                     hesnorm=True, hessmth=False, **kwargs):
+                     img_size=35,
+                     threads=5,
+                     **kwargs):
     ''' Run Pattern Matching Algorithm on two images
     Parameters
     ---------
@@ -349,12 +335,21 @@ def pattern_matching(lon1_dst, lat1_dst,
         y2 : 1D vector, Y coordinates of keypoints on image 2
         img_size : int, size of template
         threads : int, number of parallel threads
-        angles : 1D vector, angles for template rotation
-        hesnorm : bool, normalize Hessian of cross-corr matrix?
-        hessmth : bool, smooth cross-corr matrix before Hessian?
-        **kwargs : parameters for:
+        **kwargs : optional parameters for:
             prepare_first_guess
+                min_fg_pts : int, minimum number of fist guess points
+                min_border : int, minimum searching distance
+                max_border : int, maximum searching distance
+                old_border : bool, use old border selection algorithm?
+            rotate_and_match
+                angles : list - which angles to test
+                mtype : int - type of cross-correlation
+                template_matcher : func - function to use for template matching
+            get_hessian
+                hesnorm : bool, normalize Hessian by AVG and STD?
+                hessmth : bool, smooth Hessian?
             get_drift_vectors
+                nsr: Nansat.NSR(), projection that defines the grid
     Returns
     -------
         u : 1D vector, eastward ice drift speed, m/s
@@ -388,10 +383,16 @@ def pattern_matching(lon1_dst, lat1_dst,
 
     alpha0 = get_initial_rotation(n1, n2)
 
+    def _init_pool(*args, **kwargs):
+        """ Initialize shared data for multiprocessing """
+        global shared_args, shared_kwargs
+        shared_args = args
+        shared_kwargs = kwargs
+
     # run MCC in multiple threads
     p = Pool(threads, initializer=_init_pool,
-            initargs=(x1_dst, y1_dst, x2fg, y2fg, border, gpi,
-            img_size, img1, img2, alpha0, angles, hesnorm, hessmth))
+            initargs=(x1_dst[gpi], y1_dst[gpi], x2fg[gpi], y2fg[gpi], border[gpi],
+                      img1, img2, img_size, alpha0, kwargs))
     results = p.map(use_mcc_mp, range(len(gpi[gpi])))
     p.close()
     p.terminate()
