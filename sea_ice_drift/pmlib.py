@@ -143,11 +143,11 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0,
         kwargs : dict, params for get_hessian
     Returns
     -------
-        best_r : float - MCC
-        best_a : float - angle that gives highest MCC
-        best_h : float - Hessian at highest MCC point
         dx : int - X displacement of MCC
         dy : int - Y displacement of MCC
+        best_a : float - angle of MCC
+        best_r : float - MCC
+        best_h : float - Hessian at highest MCC point
         best_result : 2D array - CC
         best_template : 2D array - template rotated to the best angle
     '''
@@ -172,7 +172,7 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0,
     if mcc_norm:
         best_r = (best_r - np.median(best_result)) / np.std(best_result)
 
-    return best_r, best_a, best_h, dx, dy, best_result, best_template
+    return dx, dy, best_a, best_r, best_h, best_result, best_template
 
 def use_mcc(x1p, y1p, x2p, y2p, border, img1, img2, img_size, alpha0, **kwargs):
     """ Apply MCC algorithm for one point
@@ -193,22 +193,22 @@ def use_mcc(x1p, y1p, x2p, y2p, border, img1, img2, img_size, alpha0, **kwargs):
     -------
         x2 : float, result X coordinate on image 2
         y2 : float, result X coordinate on image 2
-        r : float, MCC
         a : float, angle that gives highest MCC
+        r : float, MCC
         h : float, Hessian of CC at MCC point
 
     """
     hws = int(img_size / 2.)
     image = img2[int(y2p-hws-border):int(y2p+hws+border+1),
                  int(x2p-hws-border):int(x2p+hws+border+1)]
-    r, a, h, dx, dy, bestr, bestt = rotate_and_match(img1, x1p, y1p,
+    dx, dy, a, r, h, bestr, bestt = rotate_and_match(img1, x1p, y1p,
                                                      img_size, image,
                                                      alpha0, **kwargs)
 
     x2 = x2p + dx
     y2 = y2p + dy
 
-    return x2, y2, r, a, h
+    return x2, y2, a, r, h
 
 def use_mcc_mp(i):
     """ Use MCC in multiprocessing
@@ -220,8 +220,8 @@ def use_mcc_mp(i):
     -------
         x2 : float, result X coordinate on image 2
         y2 : float, result X coordinate on image 2
-        r : float, MCC
         a : float, angle that gives highest MCC
+        r : float, MCC
         h : float, Hessian of CC at MCC point
 
     """
@@ -229,7 +229,7 @@ def use_mcc_mp(i):
 
     # structure of shared_args:
     # x1_dst, y1_dst, x2fg, y2fg, border, img1, img2, img_size, alpha0
-    x2, y2, r, a, h = use_mcc(shared_args[0][i],
+    x2, y2, a, r, h = use_mcc(shared_args[0][i],
                               shared_args[1][i],
                               shared_args[2][i],
                               shared_args[3][i],
@@ -240,10 +240,10 @@ def use_mcc_mp(i):
                               shared_args[8],
                               **shared_kwargs)
     if i % 100 == 0:
-        print('%02.0f%% %07.1f %07.1f %07.1f %07.1f %02.1f %03.2f %+05.1f' % (
-        100 * float(i) / len(shared_args[0]),
-         shared_args[0][i], shared_args[1][i], x2, y2, r, h, a))
-    return x2, y2, r, a, h
+        print('%02.0f%% %07.1f %07.1f %07.1f %07.1f %+05.1f %04.2f %04.2f' % (
+            100 * float(i) / len(shared_args[0]),
+            shared_args[0][i], shared_args[1][i], x2, y2, a, r, h))
+    return x2, y2, a, r, h
 
 def prepare_first_guess(x1_dst, y1_dst, n1, x1, y1, n2, x2, y2, img_size,
                         min_fg_pts=5,
@@ -362,9 +362,9 @@ def pattern_matching(lon1_dst, lat1_dst,
     Returns
     -------
         u : 1D vector, eastward ice drift speed, m/s
-        v : 1D vector, eastward ice drift speed, m/s
-        r : 1D vector, MCC
+        v : 1D vector, northward ice drift speed, m/s
         a : 1D vector, angle that gives the highes MCC
+        r : 1D vector, MCC
         h : 1D vector, Hessian of CC at MCC point
         lon2_dst : 1D vector, longitude of results on image 2
         lat2_dst : 1D vector, latitude  of results on image 2
@@ -408,25 +408,33 @@ def pattern_matching(lon1_dst, lat1_dst,
     p.join()
     del p
 
-    results = np.array(results)
-    x2_dst = results[:,0]
-    y2_dst = results[:,1]
-    r      = results[:,2]
-    a      = results[:,3]
-    h      = results[:,4]
+    if len(results) == 0:
+        lon2_dst = np.zeros(lon1_dst.shape) + np.nan
+        lat2_dst = np.zeros(lon1_dst.shape) + np.nan
+        u = np.zeros(lon1_dst.shape) + np.nan
+        v = np.zeros(lon1_dst.shape) + np.nan
+        a = np.zeros(lon1_dst.shape) + np.nan
+        r = np.zeros(lon1_dst.shape) + np.nan
+        h = np.zeros(lon1_dst.shape) + np.nan
+    else:
+        results = np.array(results)
 
-    u, v, lon1, lat1, lon2, lat2 = get_drift_vectors(n1, x1_dst[gpi], y1_dst[gpi],
-                                                     n2, x2_dst, y2_dst,
-                                                     **kwargs)
+        x2_dst = results[:,0]
+        y2_dst = results[:,1]
+        a = results[:,2]
+        r = results[:,3]
+        h = results[:,4]
 
-    lon2_dst = _fill_gpi(lon1_dst.shape, gpi, lon2)
-    lat2_dst = _fill_gpi(lon1_dst.shape, gpi, lat2)
-    u = _fill_gpi(lon1_dst.shape, gpi, u)
-    v = _fill_gpi(lon1_dst.shape, gpi, v)
-    r = _fill_gpi(lon1_dst.shape, gpi, r)
-    a = _fill_gpi(lon1_dst.shape, gpi, a)
-    h = _fill_gpi(lon1_dst.shape, gpi, h)
+        u, v, lon1, lat1, lon2, lat2 = get_drift_vectors(n1, x1_dst[gpi], y1_dst[gpi],
+                                                         n2, x2_dst, y2_dst,
+                                                         **kwargs)
 
-    return u, v, r, a, h, lon2_dst, lat2_dst
+        lon2_dst = _fill_gpi(lon1_dst.shape, gpi, lon2)
+        lat2_dst = _fill_gpi(lon1_dst.shape, gpi, lat2)
+        u = _fill_gpi(lon1_dst.shape, gpi, u)
+        v = _fill_gpi(lon1_dst.shape, gpi, v)
+        a = _fill_gpi(lon1_dst.shape, gpi, a)
+        r = _fill_gpi(lon1_dst.shape, gpi, r)
+        h = _fill_gpi(lon1_dst.shape, gpi, h)
 
-
+    return u, v, a, r, h, lon2_dst, lat2_dst
