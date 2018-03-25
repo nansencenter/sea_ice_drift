@@ -239,7 +239,7 @@ def use_mcc_mp(i):
                               shared_args[7],
                               shared_args[8],
                               **shared_kwargs)
-    if i % 10 == 0:
+    if i % 100 == 0:
         print('%02.0f%% %07.1f %07.1f %07.1f %07.1f %02.1f %03.2f %+05.1f' % (
         100 * float(i) / len(shared_args[0]),
          shared_args[0][i], shared_args[1][i], x2, y2, r, h, a))
