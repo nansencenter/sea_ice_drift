@@ -2,15 +2,15 @@ from setuptools import setup
 
 setup(
     name = "sea_ice_drift",
-    version = "0.5",
-    author = ('Anton Korosov', 'Stefan Muckenhuber'),
+    version = "0.6",
+    author = 'Anton Korosov, Stefan Muckenhuber',
     author_email = "anton.korosov@nersc.no",
     description = ("Drift of sea ice from satellite data using feature tracking and pattern matching methods"),
     long_description = ("Drift of sea ice from satellite data using feature tracking and pattern matching methods"),
     license = "GNU General Public License v3",
     keywords = "sar, feature tracking, pattern matching, ice drift",
     url = "https://github.com/nansencenter/sea_ice_drift",
-    download_url='https://github.com/nansencenter/sea_ice_drift/archive/v0.5.tar.gz',
+    download_url='https://github.com/nansencenter/sea_ice_drift/archive/v0.6.tar.gz',
     packages=['sea_ice_drift'],
     test_suite="sea_ice_drift.tests",
     classifiers=[
@@ -24,8 +24,12 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Information Analysis',
         'Topic :: Utilities',
+        'Topic :: Scientific/Engineering :: Physics',
+        'Topic :: Scientific/Engineering :: Image Recognition',
+        'Intended Audience :: Science/Research',
     ],
 )

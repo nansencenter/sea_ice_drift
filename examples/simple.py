@@ -28,8 +28,8 @@ from sea_ice_drift import SeaIceDrift
 
 # download Sentinel-1 data from https://scihub.copernicus.eu/dhus
 # or get small size sample files here:
-# wget ftp://ftp.nersc.no/pub/nansat/test_data/generic/S1B_EW_GRDM_1SDH_20161005T101835_20161005T101935_002370_004016_FBF1.SAFE.tif
-# wget ftp://ftp.nersc.no/pub/nansat/test_data/generic/S1A_EW_GRDM_1SDH_20161005T142446_20161005T142546_013356_0154D8_C3EC.SAFE.tif
+# wget ftp://ftp.nersc.no/nansat/test_data/generic/S1B_EW_GRDM_1SDH_20161005T101835_20161005T101935_002370_004016_FBF1.SAFE.tif
+# wget ftp://ftp.nersc.no/nansat/test_data/generic/S1A_EW_GRDM_1SDH_20161005T142446_20161005T142546_013356_0154D8_C3EC.SAFE.tif
 
 # ==== ICE DRIFT RETRIEVAL ====
 
@@ -48,7 +48,7 @@ lon1pm, lat1pm = np.meshgrid(np.linspace(-3, 2, 50),
 
 # apply Pattern Matching and find sea ice drift speed
 # for the given grid of points
-upm, vpm, rpm, apm, lon2pm, lat2pm = sid.get_drift_PM(
+upm, vpm, apm, rpm, hpm, lon2pm, lat2pm = sid.get_drift_PM(
                                     lon1pm, lat1pm,
                                     lon1ft, lat1ft,
                                     lon2ft, lat2ft)

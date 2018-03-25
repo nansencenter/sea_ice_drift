@@ -59,7 +59,7 @@ class SeaIceDrift(object):
         x1, y1, x2, y2 = feature_tracking(self.n1, self.n2, **kwargs)
         return get_drift_vectors(self.n1, x1, y1,
                                  self.n2, x2, y2, **kwargs)
-    
+
 
     def get_drift_PM(self, lons, lats, lon1, lat1, lon2, lat2, **kwargs):
         ''' Get sea ice drift using Pattern Matching
@@ -78,8 +78,9 @@ class SeaIceDrift(object):
         -------
             u : 1D vector, eastward ice drift speed, m/s
             v : 1D vector, eastward ice drift speed, m/s
-            r : 1D vector, MCC
             a : 1D vector, angle that gives the highes MCC
+            r : 1D vector, MCC
+            h : 1D vector, Hessian of CC matrix and MCC point
             lon2_dst : 1D vector, longitude of results on image 2
             lat2_dst : 1D vector, latitude  of results on image 2
         '''

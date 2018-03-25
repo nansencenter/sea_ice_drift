@@ -12,7 +12,7 @@
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import time
 import numpy as np
@@ -22,7 +22,7 @@ import cv2
 from sea_ice_drift.lib import (get_speed_ms,
                                x2y2_interpolation_poly)
 
-def find_key_points(image, 
+def find_key_points(image,
                     edgeThreshold=34,
                     nFeatures=100000,
                     nLevels=7,
@@ -53,10 +53,10 @@ def find_key_points(image,
         detector.setInt('nFeatures', nFeatures)
         detector.setInt('nLevels', nLevels)
         detector.setInt('patchSize', patchSize)
-    print 'ORB detector initiated'
+    print('ORB detector initiated')
 
     keyPoints, descriptors = detector.detectAndCompute(image, None)
-    print 'Key points found: %d' % len(keyPoints)
+    print('Key points found: %d' % len(keyPoints))
     return keyPoints, descriptors
 
 
@@ -95,7 +95,7 @@ def _get_matches(descriptors1, descriptors2, matcher, norm, verbose):
     matches = bf.knnMatch(descriptors1, descriptors2, k=2)
     t1 = time.time()
     if verbose:
-        print 'Keypoints matched', t1 - t0
+        print('Keypoints matched', t1 - t0)
     return matches
 
 def _filter_matches(matches, ratio_test, keyPoints1, keyPoints2, verbose):
@@ -105,7 +105,7 @@ def _filter_matches(matches, ratio_test, keyPoints1, keyPoints2, verbose):
         if m.distance < ratio_test*n.distance:
             good.append(m)
     if verbose:
-        print 'Ratio test %f found %d keypoints' % (ratio_test, len(good))
+        print('Ratio test %f found %d keypoints' % (ratio_test, len(good)))
 
     # Coordinates for start, end point of vectors
     x1 = np.array([keyPoints1[m.queryIdx].pt[0] for m in good])
@@ -137,7 +137,7 @@ def domain_filter(n, keyPoints, descr, domain, domainMargin=0, **kwargs):
            (colsD <= domain.shape()[1] - domainMargin) *
            (rowsD <= domain.shape()[0] - domainMargin))
 
-    print 'Domain filter: %d -> %d' % (len(keyPoints), len(gpi[gpi]))
+    print('Domain filter: %d -> %d' % (len(keyPoints), len(gpi[gpi])))
     return list(np.array(keyPoints)[gpi]), descr[gpi]
 
 def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=0.5, **kwargs):
@@ -159,7 +159,7 @@ def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=0.5, **kwargs):
         y2 : 1D vector - filtered destination Y coordinates on img2, pix
     '''
     gpi = get_speed_ms(n1, x1, y1, n2, x2, y2) <= maxDrift
-    print 'MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi]))
+    print('MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi])))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
 def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, **kwargs):
@@ -190,7 +190,7 @@ def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, **kwargs):
     # find pixels with error below psi
     gpi = err < psi
 
-    print 'LSTSQ filter: %d -> %d' % (len(x1), len(gpi[gpi]))
+    print('LSTSQ filter: %d -> %d' % (len(x1), len(gpi[gpi])))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
 
@@ -198,8 +198,8 @@ def feature_tracking(n1, n2, **kwargs):
     ''' Run Feature Tracking Algrotihm on two images
     Parameters
     ----------
-        n1 : First Nansat object with 2D UInt8 matrix        
-        n2 : Second Nansat object with 2D UInt8 matrix        
+        n1 : First Nansat object with 2D UInt8 matrix
+        n2 : Second Nansat object with 2D UInt8 matrix
         domainMargin : int - how much to crop from size of domain
         maxDrift : float - maximum allow ice displacement, km
         **kwargs : parameters for functions:
