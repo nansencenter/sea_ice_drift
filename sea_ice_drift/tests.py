@@ -305,17 +305,15 @@ class SeaIceDriftPMLibTests(SeaIceDriftLibTests):
         ''' shall rotate and match'''
         n1 = get_n(self.testFiles[0])
         n2 = get_n(self.testFiles[1])
-        (best_r, best_a, best_h,
-         dx, dy,
-         best_result, best_template) = rotate_and_match(
-                         n1[1],300,100,50,n2[1],60,[-2,-1,0,1,2])
+        dx, dy, best_a, best_r, best_h, best_result, best_template = rotate_and_match(
+                         n1[1], 300, 100, 50, n2[1], 60, [-2,-1,0,1,2])
         plt.subplot(1,3,1)
         plt.imshow(n2[1], interpolation='nearest')
         plt.subplot(1,3,2)
         plt.imshow(best_result, interpolation='nearest', vmin=0)
         plt.subplot(1,3,3)
         plt.imshow(best_template, interpolation='nearest')
-        plt.suptitle('%f %f %f %f %f' % (best_r, best_a, best_h, dx, dy))
+        plt.suptitle('%f %f %f %f %f' % (dx, dy, best_a, best_r, best_h))
         plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name,)
         plt.close('all')
 
@@ -328,7 +326,7 @@ class SeaIceDriftClassTests(SeaIceDriftLibTests):
 
         sid = SeaIceDrift(self.testFiles[0], self.testFiles[1])
         uft, vft, lon1ft, lat1ft, lon2ft, lat2ft = sid.get_drift_FT()
-        upm, vpm, rpm, apm, hpm, lon2pm, lat2pm = sid.get_drift_PM(
+        upm, vpm, apm, rpm, hpm, lon2pm, lat2pm = sid.get_drift_PM(
                                             lon1pm, lat1pm,
                                             lon1ft, lat1ft,
                                             lon2ft, lat2ft)
@@ -352,7 +350,7 @@ class SeaIceDriftClassTests(SeaIceDriftLibTests):
 
         plt.imshow(s02, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
         gpi = rpm > 0.4
-        plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi],
+        plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi]*hpm[gpi],
                    angles='xy', scale_units='xy', scale=0.5)
         plt.plot(lon1, lat1, '.-r')
         plt.xlim([-3, 2])
