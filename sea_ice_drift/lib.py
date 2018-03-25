@@ -257,6 +257,6 @@ def get_drift_vectors(n1, x1, y1, n2, x2, y2, nsr=NSR(), **kwargs):
 
 def _fill_gpi(shape, gpi, data):
     ''' Fill 1D <data> into 2D matrix with <shape> based on 1D <gpi> '''
-    y = np.zeros(shape).flatten()
+    y = np.zeros(shape).flatten() + np.nan
     y[gpi] = data
     return y.reshape(shape)

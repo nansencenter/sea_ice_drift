@@ -327,7 +327,7 @@ def pattern_matching(lon1_dst, lat1_dst,
            (x1_dst-hws_hypot-margin > 0) *
            (y1_dst-hws_hypot-margin > 0) *
            (x1_dst+hws_hypot+margin < n1.shape()[1]) *
-           (y1_dst+hws_hypot+margin < n1.shape()[1]))
+           (y1_dst+hws_hypot+margin < n1.shape()[0]))
 
     alpha0 = get_initial_rotation(n1, n2)
 
@@ -341,22 +341,32 @@ def pattern_matching(lon1_dst, lat1_dst,
     p.join()
     del p
     
-    x2_dst = np.array(results)[:,0]
-    y2_dst = np.array(results)[:,1]
-    r = np.array(results)[:,2]
-    a = np.array(results)[:,3]
-
-    u, v, lon1, lat1, lon2, lat2 = get_drift_vectors(n1, x1_dst[gpi], y1_dst[gpi],
-                                                     n2, x2_dst, y2_dst,
-                                                     **kwargs)
-
-    lon2_dst = _fill_gpi(lon1_dst.shape, gpi, lon2)
-    lat2_dst = _fill_gpi(lon1_dst.shape, gpi, lat2)
-    u = _fill_gpi(lon1_dst.shape, gpi, u)
-    v = _fill_gpi(lon1_dst.shape, gpi, v)
-    r = _fill_gpi(lon1_dst.shape, gpi, r)
-    a = _fill_gpi(lon1_dst.shape, gpi, a)
+    if len(results) == 0:
+        lon2_dst = np.zeros(lon1_dst.shape) + np.nan
+        lat2_dst = np.zeros(lon1_dst.shape) + np.nan
+        u = np.zeros(lon1_dst.shape) + np.nan
+        v = np.zeros(lon1_dst.shape) + np.nan
+        r = np.zeros(lon1_dst.shape) + np.nan
+        a = np.zeros(lon1_dst.shape) + np.nan
+    else:
+        results = np.array(results)
     
+        x2_dst = results[:,0]
+        y2_dst = results[:,1]
+        r = results[:,2]
+        a = results[:,3]
+
+        u, v, lon1, lat1, lon2, lat2 = get_drift_vectors(n1, x1_dst[gpi], y1_dst[gpi],
+                                                         n2, x2_dst, y2_dst,
+                                                         **kwargs)
+
+        lon2_dst = _fill_gpi(lon1_dst.shape, gpi, lon2)
+        lat2_dst = _fill_gpi(lon1_dst.shape, gpi, lat2)
+        u = _fill_gpi(lon1_dst.shape, gpi, u)
+        v = _fill_gpi(lon1_dst.shape, gpi, v)
+        r = _fill_gpi(lon1_dst.shape, gpi, r)
+        a = _fill_gpi(lon1_dst.shape, gpi, a)
+
     return u, v, r, a, lon2_dst, lat2_dst
 
     
