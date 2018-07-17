@@ -50,7 +50,7 @@ from sea_ice_drift.pmlib import (get_rotated_template,
 
 from sea_ice_drift.seaicedrift import SeaIceDrift
 
-class SeaIceDriftLibTests(unittest.TestCase):
+class SeaIceDriftTestBase(unittest.TestCase):
     def setUp(self):
         ''' Load test data '''
         testDir = os.getenv('ICE_DRIFT_TEST_DATA_DIR')
@@ -61,20 +61,19 @@ class SeaIceDriftLibTests(unittest.TestCase):
             sys.exit('Not enough test files in %s' % testDir)
         # sort by date
         dates = [os.path.basename(f).split('_')[4] for f in testFiles]
-        self.testFiles = [str(f)
-                     for f in np.array(testFiles)[np.argsort(dates)]]
+        self.testFiles = [str(f) for f in np.array(testFiles)[np.argsort(dates)]]
         self.n1 = Nansat(self.testFiles[0])
         self.n2 = Nansat(self.testFiles[1])
-        self.img1 = self.n1['sigma0_HV']
-        self.img2 = self.n2['sigma0_HV']
         self.imgMin = 0.001
         self.imgMax = 0.013
         self.nFeatures = 5000
+        self.img1 = get_uint8_image(self.n1['sigma0_HV'], self.imgMin, self.imgMax)
+        self.img2 = get_uint8_image(self.n2['sigma0_HV'], self.imgMin, self.imgMax)
 
+class SeaIceDriftLibTests(SeaIceDriftTestBase):
     def test_get_uint8_image(self):
         ''' Shall scale image values from float (or any) to 0 - 255 [uint8] '''
-
-        imageUint8 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
+        imageUint8 = get_uint8_image(self.n1['sigma0_HV'], self.imgMin, self.imgMax)
         plt.imsave('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name,
                     imageUint8, vmin=0, vmax=255)
 
@@ -84,10 +83,8 @@ class SeaIceDriftLibTests(unittest.TestCase):
 
     def test_get_displacement_km(self):
         ''' Shall find matching coordinates and plot quiver in lon/lat'''
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
+        keyPoints1, descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(self.img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
         h = get_displacement_km(self.n1, x1, y1, self.n2, x2, y2)
@@ -100,10 +97,8 @@ class SeaIceDriftLibTests(unittest.TestCase):
 
     def test_get_displacement_pix(self):
         ''' Shall find matching coordinates and plot quiver in pixel/line'''
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
+        keyPoints1, descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(self.img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
         u, v = get_displacement_pix(self.n1, x1, y1, self.n2, x2, y2)
@@ -126,10 +121,8 @@ class SeaIceDriftLibTests(unittest.TestCase):
         self.assertEqual(n[1].max(), 255)
 
     def test_x2y2_interpolation_poly(self):
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
+        keyPoints1, descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(self.img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
         x2p1, y2p1 = x2y2_interpolation_poly(x1, y1, x2, y2, x1, y1, 1)
@@ -149,10 +142,8 @@ class SeaIceDriftLibTests(unittest.TestCase):
         self.assertEqual(len(x2p1), len(x1))
 
     def test_x2y2_interpolation_near(self):
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
+        keyPoints1, descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(self.img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
         x2p1, y2p1 = x2y2_interpolation_near(x1, y1, x2, y2, x1, y1)
@@ -166,10 +157,8 @@ class SeaIceDriftLibTests(unittest.TestCase):
         self.assertEqual(len(x2p1), len(x1))
 
     def test_get_drift_vectors(self):
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
+        keyPoints1, descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(self.img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
         u, v, lon1, lat1, lon2, lat2 = get_drift_vectors(self.n1, x1, y1,
@@ -190,79 +179,80 @@ class SeaIceDriftLibTests(unittest.TestCase):
         self.assertEqual(a.shape, b.shape)
 
 
-class SeaIceDriftFTLibTests(SeaIceDriftLibTests):
+class SeaIceDriftFTLibTests(SeaIceDriftTestBase):
+    def setUp(self):
+        super(SeaIceDriftFTLibTests, self).setUp()
+        self.keyPoints1, self.descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
+        self.keyPoints2, self.descr2 = find_key_points(self.img2, nFeatures=self.nFeatures)
+
     def test_find_key_points(self):
         ''' Shall find key points using default values '''
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1)
-
-        self.assertTrue(len(keyPoints1) > 1000)
+        self.assertTrue(len(self.keyPoints1) > 1000)
 
     def test_get_match_coords(self):
         ''' Shall find matching coordinates '''
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
-        x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
-                                          keyPoints2, descr2)
-        self.assertTrue(len(keyPoints1) > len(x1))
-        self.assertTrue(len(keyPoints2) > len(x2))
+        x1, y1, x2, y2 = get_match_coords(self.keyPoints1, self.descr1,
+                                          self.keyPoints2, self.descr2)
+        self.assertTrue(len(self.keyPoints1) > len(x1))
+        self.assertTrue(len(self.keyPoints2) > len(x2))
 
     def test_domain_filter(self):
         ''' Shall leave keypoints from second image withn domain of the first '''
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
-
-        keyPoints2f, descr2f = domain_filter(self.n2, keyPoints2, descr2,
+        self.keyPoints2f, self.descr2f = domain_filter(self.n2, self.keyPoints2, self.descr2,
                                              self.n1, domainMargin=100)
 
         # plot dots
-        cols1 = [kp.pt[0] for kp in keyPoints1]
-        rows1 = [kp.pt[1] for kp in keyPoints1]
+        cols1 = [kp.pt[0] for kp in self.keyPoints1]
+        rows1 = [kp.pt[1] for kp in self.keyPoints1]
         lon1, lat1 = self.n1.transform_points(cols1, rows1, 0)
-        cols2 = [kp.pt[0] for kp in keyPoints2f]
-        rows2 = [kp.pt[1] for kp in keyPoints2f]
+        cols2 = [kp.pt[0] for kp in self.keyPoints2f]
+        rows2 = [kp.pt[1] for kp in self.keyPoints2f]
         lon2, lat2 = self.n2.transform_points(cols2, rows2, 0)
         plt.plot(lon1, lat1, '.')
         plt.plot(lon2, lat2, '.')
         plt.savefig('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name)
         plt.close('all')
 
-        self.assertTrue(len(descr2f) < len(descr2))
+        self.assertTrue(len(self.descr2f) < len(self.descr2))
 
-    def test_max_drift_filter(self):
+    def test_max_drift_filter_speed(self):
         '''Shall keep only slow drift '''
-        maxSpeed = 30 # km
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
-        x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
-                                          keyPoints2, descr2,
+        x1, y1, x2, y2 = get_match_coords(self.keyPoints1, self.descr1,
+                                          self.keyPoints2, self.descr2,
                                           ratio_test=0.8)
         x1f, y1f, x2f, y2f = max_drift_filter(self.n1, x1, y1,
-                                          self.n2, x2, y2)
+                                          self.n2, x2, y2,
+                                          max_speed=0.3)
+        self.assertTrue(len(x1f) > 0)
+        self.assertTrue(len(x1f) < len(x1))
 
+        # remove time_coverage_start
+        self.n1.vrt.dataset.SetMetadata({})
+
+        # test that
+        with self.assertRaises(ValueError):
+            x1f, y1f, x2f, y2f = max_drift_filter(self.n1, x1, y1,
+                                          self.n2, x2, y2,
+                                          max_speed=0.3)
+
+
+        x1f, y1f, x2f, y2f = max_drift_filter(self.n1, x1, y1,
+                                          self.n2, x2, y2,
+                                          max_drift=1000)
+        self.assertTrue(len(x1f) > 0)
         self.assertTrue(len(x1f) < len(x1))
 
     def test_lstsq_filter(self):
         ''' Shall filter out not matching points '''
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
-        x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
-                                          keyPoints2, descr2,
+        x1, y1, x2, y2 = get_match_coords(self.keyPoints1, self.descr1,
+                                          self.keyPoints2, self.descr2,
                                           ratio_test=0.8)
 
         x1f, y1f, x2f, y2f = lstsq_filter(x1, y1, x2, y2)
         self.assertTrue(len(x1) > len(x1f))
 
 
-class SeaIceDriftPMLibTests(SeaIceDriftLibTests):
+class SeaIceDriftPMLibTests(SeaIceDriftTestBase):
     def test_get_rotated_template(self):
         ''' Shall plot two templates with and without rotation '''
         temp_rot00 = get_rotated_template(self.img1, 100, 300, 50, 0)
@@ -280,17 +270,15 @@ class SeaIceDriftPMLibTests(SeaIceDriftLibTests):
 
     def test_get_distance_to_nearest_keypoint(self):
         ''' Shall create vector of distances '''
-        img1 = get_uint8_image(self.img1, self.imgMin, self.imgMax)
-        img2 = get_uint8_image(self.img2, self.imgMin, self.imgMax)
-        keyPoints1, descr1 = find_key_points(img1, nFeatures=self.nFeatures)
-        keyPoints2, descr2 = find_key_points(img2, nFeatures=self.nFeatures)
+        keyPoints1, descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
+        keyPoints2, descr2 = find_key_points(self.img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
 
-        dist = get_distance_to_nearest_keypoint(x1, y1, img1.shape)
+        dist = get_distance_to_nearest_keypoint(x1, y1, self.img1.shape)
         plt.imsave('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name,
                     dist)
-        self.assertEqual(dist.shape, img1.shape)
+        self.assertEqual(dist.shape, self.img1.shape)
 
     def test_get_initial_rotation(self):
         ''' Shall find angle between images '''
@@ -318,7 +306,7 @@ class SeaIceDriftPMLibTests(SeaIceDriftLibTests):
         plt.close('all')
 
 
-class SeaIceDriftClassTests(SeaIceDriftLibTests):
+class SeaIceDriftClassTests(SeaIceDriftTestBase):
     def test_integrated(self):
         ''' Shall use all developed functions for feature tracking'''
         lon1pm, lat1pm = np.meshgrid(np.linspace(-3, 2, 50),

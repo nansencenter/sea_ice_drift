@@ -20,7 +20,8 @@ import numpy as np
 import cv2
 
 from sea_ice_drift.lib import (get_speed_ms,
-                               x2y2_interpolation_poly)
+                               x2y2_interpolation_poly,
+                               get_displacement_km)
 
 def find_key_points(image,
                     edgeThreshold=34,
@@ -140,7 +141,7 @@ def domain_filter(n, keyPoints, descr, domain, domainMargin=0, **kwargs):
     print('Domain filter: %d -> %d' % (len(keyPoints), len(gpi[gpi])))
     return list(np.array(keyPoints)[gpi]), descr[gpi]
 
-def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=0.5, **kwargs):
+def max_drift_filter(n1, x1, y1, n2, x2, y2, max_speed=0.5, max_drift=None, **kwargs):
     ''' Filter out too high drift (m/s)
     Parameters
     ----------
@@ -150,15 +151,52 @@ def max_drift_filter(n1, x1, y1, n2, x2, y2, maxDrift=0.5, **kwargs):
         n2 : Second Nansat object
         x2 : 1D vector - X coordinates of keypoints on image 2
         y2 : 1D vector - Y coordinates of keypoints on image 2
-        maxDrift : float - maximum allowed ice drift speed, m/s
+        max_speed : float - maximum allowed ice drift speed, m/s
+        max_drift : float - maximum allowed drift distance, meters
+
     Returns
     -------
         x1 : 1D vector - filtered source X coordinates on img1, pix
         y1 : 1D vector - filtered source Y coordinates on img1, pix
         x2 : 1D vector - filtered destination X coordinates on img2, pix
         y2 : 1D vector - filtered destination Y coordinates on img2, pix
+
+    Note
+    ----
+        If time_coverage_start is not avaialabe from input data then the <max_speed> threshold
+        is not used and the user should set value for <max_drift>.
+
     '''
-    gpi = get_speed_ms(n1, x1, y1, n2, x2, y2) <= maxDrift
+    # chack if input datasets have time stamp
+    try:
+        n1_time_coverage_start = n1.time_coverage_start
+        n2_time_coverage_start = n2.time_coverage_start
+    except ValueError:
+        data_has_timestamp = False
+    else:
+        data_has_timestamp = True
+
+    if data_has_timestamp:
+        # if datasets have timestamp compare with speed
+        gpi = get_speed_ms(n1, x1, y1, n2, x2, y2) <= max_speed
+    elif max_drift is not None:
+        # if datasets don't have timestamp compare with displacement
+        gpi = 1000.*get_displacement_km(n1, x1, y1, n2, x2, y2) <= max_drift
+    else:
+        # if max displacement is not given - raise error
+        raise ValueError('''
+
+        Error while filtering matching vectors!
+        Input data does not have time stamp, and <max_drift> is not set.
+        Either use data supported by Nansat, or
+        provide a value for <max_drift> - maximum allowed ice displacement between images (meters).
+        Examples:
+            uft, vft, lon1ft, lat1ft, lon2ft, lat2ft = sid.get_drift_FT(max_drift=10000)
+            x1, y1, x2, y2 = feature_tracking(n1, n2, max_drift=10000)
+        Vectors with displacement higher than <max_drift> will be removed.
+
+        ''')
+
     print('MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi])))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
@@ -201,10 +239,13 @@ def feature_tracking(n1, n2, **kwargs):
         n1 : First Nansat object with 2D UInt8 matrix
         n2 : Second Nansat object with 2D UInt8 matrix
         domainMargin : int - how much to crop from size of domain
-        maxDrift : float - maximum allow ice displacement, km
+        max_speed : float - maximum allow ice drift speed, m/s
+        max_drift : float - maximum allow ice drift displacement, m
         **kwargs : parameters for functions:
             find_key_points
+            domain_filter
             get_match_coords
+            max_drift_filter
             lstsq_filter
     Returns
     -------
