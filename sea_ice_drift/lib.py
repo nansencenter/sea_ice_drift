@@ -218,8 +218,8 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
 
     nout = Nansat(domain=n, array=img, parameters={'name': bandName})
     nout.set_metadata(n.get_metadata())
-    # improve geonetric accuracy
-    nout.reproject_GCPs()
+    # improve geolocation accuracy
+    nout.reproject_gcps()
     nout.vrt.tps = True
     return nout
 
