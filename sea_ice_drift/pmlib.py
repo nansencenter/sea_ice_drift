@@ -56,7 +56,7 @@ def get_hessian(ccm, hes_norm=True, hes_smth=False, **kwargs):
     return hes
 
 
-def get_rotated_template(img, r, c, size, angle, order=1):
+def get_rotated_template(img, r, c, size, angle, rot_order=1, **kwargs):
     ''' Get rotated template of a given size
     Parameters
     ----------
@@ -72,10 +72,8 @@ def get_rotated_template(img, r, c, size, angle, order=1):
     '''
     hws = size / 2.
     angle_rad = np.radians(angle)
-    hwsrot = np.ceil(hws * np.abs(np.cos(angle_rad)) +
-                     hws * np.abs(np.sin(angle_rad)))
-    hwsrot2 = np.ceil(hwsrot * np.abs(np.cos(angle_rad)) +
-                      hwsrot * np.abs(np.sin(angle_rad)))
+    hwsrot = np.ceil(hws * np.abs(np.cos(angle_rad)) + hws * np.abs(np.sin(angle_rad)))
+    hwsrot2 = np.ceil(hwsrot * np.abs(np.cos(angle_rad)) + hwsrot * np.abs(np.sin(angle_rad)))
     rotBorder1 = int(hwsrot2 - hws)
     rotBorder2 = int(rotBorder1 + hws + hws)
 
@@ -88,7 +86,7 @@ def get_rotated_template(img, r, c, size, angle, order=1):
                                    xsize=int(hwsrot*2+1),
                                    ysize=int(hwsrot*2+1))
 
-    templateRot = nd.interpolation.rotate(template, angle, order=order)
+    templateRot = nd.interpolation.rotate(template, angle, order=rot_order)
     templateRot = templateRot[rotBorder1:rotBorder2, rotBorder1:rotBorder2]
 
     return templateRot
@@ -153,11 +151,13 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0,
     '''
     best_r = -np.inf
     for angle in angles:
-        template = get_rotated_template(img1, y, x, img_size, angle-alpha0)
+        template = get_rotated_template(img1, y, x, img_size, angle-alpha0, **kwargs)
         if template.shape[0] < img_size or template.shape[1] < img_size:
             return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
+
         result = template_matcher(image, template.astype(np.uint8), mtype)
         ij = np.unravel_index(np.argmax(result), result.shape)
+
         if result.max() > best_r:
             best_r = result.max()
             best_a = angle
@@ -188,7 +188,7 @@ def use_mcc(x1p, y1p, x2p, y2p, border, img1, img2, img_size, alpha0, **kwargs):
         img2 : 2D array - full szie image 2
         img_size : int, template size
         alpha0 : float, rotation between two images
-        kwargs : dict, params for rotate_and_match, get_hessian
+        kwargs : dict, params for rotate_and_match, get_rotated_template, get_hessian
     Returns
     -------
         x2 : float, result X coordinate on image 2
@@ -198,13 +198,15 @@ def use_mcc(x1p, y1p, x2p, y2p, border, img1, img2, img_size, alpha0, **kwargs):
         h : float, Hessian of CC at MCC point
 
     """
+    x2p, y2p = int(round(x2p)), int(round(y2p))
+
     hws = int(img_size / 2.)
     image = img2[int(y2p-hws-border):int(y2p+hws+border+1),
                  int(x2p-hws-border):int(x2p+hws+border+1)]
+
     dx, dy, a, r, h, bestr, bestt = rotate_and_match(img1, x1p, y1p,
                                                      img_size, image,
                                                      alpha0, **kwargs)
-
     x2 = x2p + dx
     y2 = y2p + dy
 
@@ -354,6 +356,8 @@ def pattern_matching(lon1_dst, lat1_dst,
                 mtype : int - type of cross-correlation
                 template_matcher : func - function to use for template matching
                 mcc_norm : bool, normalize MCC by AVG and STD ?
+            get_rotated_template
+                rot_order : resampling order for rotation
             get_hessian
                 hes_norm : bool, normalize Hessian by AVG and STD?
                 hes_smth : bool, smooth Hessian?
@@ -370,6 +374,7 @@ def pattern_matching(lon1_dst, lat1_dst,
         lat2_dst : 1D vector, latitude  of results on image 2
     '''
     img1, img2 = n1[1], n2[1]
+    dst_shape = lon1_dst.shape
     # convert lon/lat to pixe/line of the first image
     x1_dst, y1_dst = n1.transform_points(lon1_dst.flatten(), lat1_dst.flatten(), 1)
 
@@ -378,6 +383,7 @@ def pattern_matching(lon1_dst, lat1_dst,
                                              n2, x2, y2,
                                              img_size,
                                              **kwargs)
+
     # find good input points
     hws = img_size / 2
     hws_hypot = np.hypot(hws, hws)
@@ -398,24 +404,30 @@ def pattern_matching(lon1_dst, lat1_dst,
         shared_args = args[:9]
         shared_kwargs = args[9]
 
-    # run MCC in multiple threads
-    p = Pool(threads, initializer=_init_pool,
-            initargs=(x1_dst[gpi], y1_dst[gpi], x2fg[gpi], y2fg[gpi], border[gpi],
-                      img1, img2, img_size, alpha0, kwargs))
-    results = p.map(use_mcc_mp, range(len(gpi[gpi])))
-    p.close()
-    p.terminate()
-    p.join()
-    del p
+    if threads == 0:
+        # run MCC without threads
+        _init_pool(x1_dst[gpi], y1_dst[gpi], x2fg[gpi], y2fg[gpi], border[gpi],
+                      img1, img2, img_size, alpha0, kwargs)
+        results = [use_mcc_mp(i) for i in range(len(gpi[gpi]))]
+    else:
+        # run MCC in multiple threads
+        p = Pool(threads, initializer=_init_pool,
+                initargs=(x1_dst[gpi], y1_dst[gpi], x2fg[gpi], y2fg[gpi], border[gpi],
+                          img1, img2, img_size, alpha0, kwargs))
+        results = p.map(use_mcc_mp, range(len(gpi[gpi])))
+        p.close()
+        p.terminate()
+        p.join()
+        del p
 
     if len(results) == 0:
-        lon2_dst = np.zeros(lon1_dst.shape) + np.nan
-        lat2_dst = np.zeros(lon1_dst.shape) + np.nan
-        u = np.zeros(lon1_dst.shape) + np.nan
-        v = np.zeros(lon1_dst.shape) + np.nan
-        a = np.zeros(lon1_dst.shape) + np.nan
-        r = np.zeros(lon1_dst.shape) + np.nan
-        h = np.zeros(lon1_dst.shape) + np.nan
+        lon2_dst = np.zeros(dst_shape) + np.nan
+        lat2_dst = np.zeros(dst_shape) + np.nan
+        u = np.zeros(dst_shape) + np.nan
+        v = np.zeros(dst_shape) + np.nan
+        a = np.zeros(dst_shape) + np.nan
+        r = np.zeros(dst_shape) + np.nan
+        h = np.zeros(dst_shape) + np.nan
     else:
         results = np.array(results)
 
@@ -427,14 +439,14 @@ def pattern_matching(lon1_dst, lat1_dst,
 
         u, v, lon1, lat1, lon2, lat2 = get_drift_vectors(n1, x1_dst[gpi], y1_dst[gpi],
                                                          n2, x2_dst, y2_dst,
+                                                         dst_shape=dst_shape, gpi=gpi,
                                                          **kwargs)
-
-        lon2_dst = _fill_gpi(lon1_dst.shape, gpi, lon2)
-        lat2_dst = _fill_gpi(lon1_dst.shape, gpi, lat2)
-        u = _fill_gpi(lon1_dst.shape, gpi, u)
-        v = _fill_gpi(lon1_dst.shape, gpi, v)
-        a = _fill_gpi(lon1_dst.shape, gpi, a)
-        r = _fill_gpi(lon1_dst.shape, gpi, r)
-        h = _fill_gpi(lon1_dst.shape, gpi, h)
+        lon2_dst = _fill_gpi(dst_shape, gpi, lon2)
+        lat2_dst = _fill_gpi(dst_shape, gpi, lat2)
+        u = _fill_gpi(dst_shape, gpi, u)
+        v = _fill_gpi(dst_shape, gpi, v)
+        a = _fill_gpi(dst_shape, gpi, a)
+        r = _fill_gpi(dst_shape, gpi, r)
+        h = _fill_gpi(dst_shape, gpi, h)
 
     return u, v, a, r, h, lon2_dst, lat2_dst

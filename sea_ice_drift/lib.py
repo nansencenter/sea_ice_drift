@@ -13,6 +13,7 @@
 # but WITHOUT ANY WARRANTY without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 from __future__ import absolute_import, print_function
+import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -143,8 +144,8 @@ def x2y2_interpolation_poly(x1, y1, x2, y2, x1grd, y1grd, order=1, **kwargs):
         A += [x1**3, y1**3, x1**2*y1, y1**2*x1]
 
     A = np.vstack(A).T
-    Bx = np.linalg.lstsq(A, x2)[0]
-    By = np.linalg.lstsq(A, y2)[0]
+    Bx = np.linalg.lstsq(A, x2, rcond=None)[0]
+    By = np.linalg.lstsq(A, y2, rcond=None)[0]
     x1grdF = x1grd.flatten()
     y1grdF = y1grd.flatten()
 
@@ -207,7 +208,7 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
     else:
         # open data with Nansat and downsample
         n = Nansat(filename)
-        n.resize(factor, eResampleAlg=-1)
+        n.resize(factor, resample_alg=-1)
     # get matrix with data
     img = n[bandName]
     # convert to dB
@@ -216,7 +217,7 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
     # convert to 0 - 255
     img = get_uint8_image(img, vmin, vmax)
 
-    nout = Nansat(domain=n, array=img, parameters={'name': bandName})
+    nout = Nansat.from_domain(n, img, parameters={'name': bandName})
     nout.set_metadata(n.get_metadata())
     # improve geolocation accuracy
     nout.reproject_gcps()
