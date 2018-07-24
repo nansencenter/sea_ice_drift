@@ -12,8 +12,7 @@
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-from __future__ import absolute_import
-
+import time
 from multiprocessing import Pool
 
 import numpy as np
@@ -242,7 +241,7 @@ def use_mcc_mp(i):
     if i % 100 == 0:
         print('%02.0f%% %07.1f %07.1f %07.1f %07.1f %+05.1f %04.2f %04.2f' % (
             100 * float(i) / len(shared_args[0]),
-            shared_args[0][i], shared_args[1][i], c2, r2, a, r, h))
+            shared_args[0][i], shared_args[1][i], c2, r2, a, r, h), end='\r')
     return c2, r2, a, r, h
 
 def prepare_first_guess(c2pm1, r2pm1, n1, c1, r1, n2, c2, r2, img_size,
@@ -371,6 +370,7 @@ def pattern_matching(lon_pm1, lat_pm1,
         lon2_dst : 1D vector, longitude of results on image 2
         lat2_dst : 1D vector, latitude  of results on image 2
     '''
+    t0 = time.time()
     img1, img2 = n1[1], n2[1]
     dst_shape = lon_pm1.shape
 
@@ -392,8 +392,6 @@ def pattern_matching(lon_pm1, lat_pm1,
 
     # approximate final PM points on image 2 (the first guess)
     c2fg, r2fg, brd2 = prepare_first_guess(c2pm1i, r2pm1i, n1, c1, r1, n2, c2, r2, img_size, **kwargs)
-    #c2fg, r2fg = c2pm1i, r2pm1i
-    #brd2 = np.zeros_like(c2fg) + 50
 
     # find valid input points
     hws = round(img_size / 2) + 1
@@ -429,6 +427,7 @@ def pattern_matching(lon_pm1, lat_pm1,
         p.join()
         del p
 
+    print('\n', 'Pattern matching - OK! (%3.0f sec)' % (time.time() - t0))
     if len(results) == 0:
         lon2_dst = np.zeros(dst_shape) + np.nan
         lat2_dst = np.zeros(dst_shape) + np.nan
