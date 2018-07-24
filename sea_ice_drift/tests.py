@@ -30,8 +30,8 @@ from sea_ice_drift.lib import (get_uint8_image,
                                get_displacement_km,
                                get_displacement_pix,
                                get_denoised_object,
-                               x2y2_interpolation_poly,
-                               x2y2_interpolation_near,
+                               interpolation_poly,
+                               interpolation_near,
                                get_n,
                                get_drift_vectors,
                                _fill_gpi)
@@ -120,14 +120,14 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
         self.assertEqual(n[1].min(), 0)
         self.assertEqual(n[1].max(), 255)
 
-    def test_x2y2_interpolation_poly(self):
+    def test_interpolation_poly(self):
         keyPoints1, descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
         keyPoints2, descr2 = find_key_points(self.img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
-        x2p1, y2p1 = x2y2_interpolation_poly(x1, y1, x2, y2, x1, y1, 1)
-        x2p2, y2p2 = x2y2_interpolation_poly(x1, y1, x2, y2, x1, y1, 2)
-        x2p3, y2p3 = x2y2_interpolation_poly(x1, y1, x2, y2, x1, y1, 3)
+        x2p1, y2p1 = interpolation_poly(x1, y1, x2, y2, x1, y1, 1)
+        x2p2, y2p2 = interpolation_poly(x1, y1, x2, y2, x1, y1, 2)
+        x2p3, y2p3 = interpolation_poly(x1, y1, x2, y2, x1, y1, 3)
 
         plt.subplot(1,2,1)
         plt.plot(x2, x2p1, '.')
@@ -141,12 +141,12 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
         plt.close('all')
         self.assertEqual(len(x2p1), len(x1))
 
-    def test_x2y2_interpolation_near(self):
+    def test_interpolation_near(self):
         keyPoints1, descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
         keyPoints2, descr2 = find_key_points(self.img2, nFeatures=self.nFeatures)
         x1, y1, x2, y2 = get_match_coords(keyPoints1, descr1,
                                           keyPoints2, descr2)
-        x2p1, y2p1 = x2y2_interpolation_near(x1, y1, x2, y2, x1, y1)
+        x2p1, y2p1 = interpolation_near(x1, y1, x2, y2, x1, y1)
 
         plt.subplot(1,2,1)
         plt.plot(x2, x2p1, '.')

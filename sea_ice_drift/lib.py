@@ -120,7 +120,7 @@ def get_denoised_object(filename, bandName, factor, **kwargs):
 
     return n
 
-def x2y2_interpolation_poly(x1, y1, x2, y2, x1grd, y1grd, order=1, **kwargs):
+def interpolation_poly(x1, y1, x2, y2, x1grd, y1grd, order=1, **kwargs):
     ''' Interpolate values of x2/y2 onto full-res grids of x1/y1 using
     polynomial of order 1 (or 2 or 3)
     Parameters
@@ -160,7 +160,7 @@ def x2y2_interpolation_poly(x1, y1, x2, y2, x1grd, y1grd, order=1, **kwargs):
 
     return x2grd, y2grd
 
-def x2y2_interpolation_near(x1, y1, x2, y2, x1grd, y1grd, method='linear', **kwargs):
+def interpolation_near(x1, y1, x2, y2, x1grd, y1grd, method='linear', **kwargs):
     ''' Interpolate values of x2/y2 onto full-res grids of x1/y1 using
     linear interpolation of nearest points
     Parameters

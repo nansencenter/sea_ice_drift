@@ -5,8 +5,8 @@ from sea_ice_drift.lib import (get_uint8_image,
                                get_speed_ms,
                                get_displacement_pix,
                                get_denoised_object,
-                               x2y2_interpolation_poly,
-                               x2y2_interpolation_near,
+                               interpolation_poly,
+                               interpolation_near,
                                get_n,
                                get_drift_vectors)
 
@@ -17,8 +17,7 @@ from sea_ice_drift.ftlib import (find_key_points,
                                  lstsq_filter,
                                  feature_tracking)
 
-from sea_ice_drift.pmlib import (get_rotated_template,
-                                 get_distance_to_nearest_keypoint,
+from sea_ice_drift.pmlib import (get_distance_to_nearest_keypoint,
                                  get_initial_rotation,
                                  rotate_and_match,
                                  use_mcc,
@@ -36,8 +35,8 @@ __all__ = [
     'get_denoised_object',
     'x2y2_interpolation_poly',
     'x2y2_interpolation_near',
-    'get_n', 
-    
+    'get_n',
+
     'find_key_points',
     'get_match_coords',
     'domain_filter',

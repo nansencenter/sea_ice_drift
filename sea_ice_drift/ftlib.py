@@ -20,7 +20,7 @@ import numpy as np
 import cv2
 
 from sea_ice_drift.lib import (get_speed_ms,
-                               x2y2_interpolation_poly,
+                               interpolation_poly,
                                get_displacement_km)
 
 def find_key_points(image,
@@ -220,7 +220,7 @@ def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, **kwargs):
     if len(x1) == 0:
         return map(np.array, [[],[],[],[]])
     # interpolate using N-order polynomial
-    x2sim, y2sim = x2y2_interpolation_poly(x1, y1, x2, y2, x1, y1, order=order)
+    x2sim, y2sim = interpolation_poly(x1, y1, x2, y2, x1, y1, order=order)
 
     # find error between actual and simulated x1
     err = np.hypot(x2 - x2sim, y2 - y2sim)

@@ -18,12 +18,15 @@ from multiprocessing import Pool
 
 import numpy as np
 from scipy import ndimage as nd
+import matplotlib.pyplot as plt
 
 import cv2
 import gdal
 
-from sea_ice_drift.lib import (x2y2_interpolation_poly,
-                               x2y2_interpolation_near,
+from nansat import NSR
+
+from sea_ice_drift.lib import (interpolation_poly,
+                               interpolation_near,
                                get_drift_vectors,
                                _fill_gpi)
 
@@ -55,42 +58,6 @@ def get_hessian(ccm, hes_norm=True, hes_smth=False, **kwargs):
 
     return hes
 
-
-def get_rotated_template(img, r, c, size, angle, rot_order=1, **kwargs):
-    ''' Get rotated template of a given size
-    Parameters
-    ----------
-    img : 2D numpy array - original image
-    r : int - row coordinate of center
-    c : int - column coordinate of center
-    size : int - template size
-    angle : float - rotation angle
-    order : resampling order
-    Returns
-    -------
-        templateRot : 2D numpy array - rotated subimage
-    '''
-    hws = size / 2.
-    angle_rad = np.radians(angle)
-    hwsrot = np.ceil(hws * np.abs(np.cos(angle_rad)) + hws * np.abs(np.sin(angle_rad)))
-    hwsrot2 = np.ceil(hwsrot * np.abs(np.cos(angle_rad)) + hwsrot * np.abs(np.sin(angle_rad)))
-    rotBorder1 = int(hwsrot2 - hws)
-    rotBorder2 = int(rotBorder1 + hws + hws)
-
-    # read large subimage
-    if isinstance(img, np.ndarray):
-        template = img[int(r-hwsrot):int(r+hwsrot+1), int(c-hwsrot):int(c+hwsrot+1)]
-    elif isinstance(img, gdal.Dataset):
-        template = img.ReadAsArray(xoff=int(c[0]-hwsrot),
-                                   yoff=int(r[0]-hwsrot),
-                                   xsize=int(hwsrot*2+1),
-                                   ysize=int(hwsrot*2+1))
-
-    templateRot = nd.interpolation.rotate(template, angle, order=rot_order)
-    templateRot = templateRot[rotBorder1:rotBorder2, rotBorder1:rotBorder2]
-
-    return templateRot
-
 def get_distance_to_nearest_keypoint(x1, y1, shape):
     ''' Return full-res matrix with distance to nearest keypoint in pixels
     Parameters
@@ -119,7 +86,35 @@ def get_initial_rotation(n1, n2):
     alpha = np.degrees(np.arctan2(b, a)[0])
     return alpha
 
-def rotate_and_match(img1, x, y, img_size, image, alpha0,
+def get_template(img, c, r, a, s, rot_order=0, **kwargs):
+    """ Get rotated and shifted square template
+    Parameters
+    ----------
+        img : ndarray, input image
+        c : float, center column coordinate (pixels)
+        r : float, center row coordinate (pixels)
+        a : float, rotation angle (degrees)
+        s : odd int, template size (width and height)
+        order : int, transformation order
+    Returns
+    -------
+        t : ndarray (s,s)[np.uint8], rotated template
+
+    """
+    # center on output template
+    tc = int(s / 2.) + 1
+    tc = np.array([tc, tc])
+
+    a = np.radians(a)
+    transform = np.array([[np.cos(a), -np.sin(a)],[np.sin(a), np.cos(a)]])
+    offset = np.array([r, c]) - tc.dot(transform)
+
+    t = nd.interpolation.affine_transform(
+        img, transform.T, order=rot_order, offset=offset, output_shape=(s, s), cval=0.0, output=np.uint8)
+
+    return t
+
+def rotate_and_match(img1, c1, r1, img_size, image2, alpha0,
                      angles=[-3,0,3],
                      mtype=cv2.TM_CCOEFF_NORMED,
                      template_matcher=cv2.matchTemplate,
@@ -128,11 +123,11 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0,
     ''' Rotate template in a range of angles and run MCC for each
     Parameters
     ----------
-        im1g : 2D numpy array - original image 1
-        x : int - X coordinate of center
-        y : int - Y coordinate of center
+        im1 : 2D numpy array - original image 1
+        c1 : float - column coordinate of center on img1
+        r1 : float - row coordinate of center on img1
         img_size : size of template
-        image : original image 2
+        image : np.uint8, subset from image 2
         alpha0 : float - angle of rotation between two SAR scenes
         angles : list - which angles to test
         mtype : int - type of cross-correlation
@@ -141,21 +136,24 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0,
         kwargs : dict, params for get_hessian
     Returns
     -------
-        dx : int - X displacement of MCC
-        dy : int - Y displacement of MCC
+        dc : int - column displacement of MCC
+        dr : int - row displacement of MCC
         best_a : float - angle of MCC
         best_r : float - MCC
         best_h : float - Hessian at highest MCC point
         best_result : 2D array - CC
         best_template : 2D array - template rotated to the best angle
     '''
+
     best_r = -np.inf
     for angle in angles:
-        template = get_rotated_template(img1, y, x, img_size, angle-alpha0, **kwargs)
+        template = get_template(img1, c1, r1, angle-alpha0, img_size, **kwargs)
+
         if template.shape[0] < img_size or template.shape[1] < img_size:
             return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
 
-        result = template_matcher(image, template.astype(np.uint8), mtype)
+        result = template_matcher(image2, template, mtype)
+
         ij = np.unravel_index(np.argmax(result), result.shape)
 
         if result.max() > best_r:
@@ -166,23 +164,23 @@ def rotate_and_match(img1, x, y, img_size, image, alpha0,
             best_ij = ij
 
     best_h = get_hessian(best_result, **kwargs)[best_ij]
-    dy = best_ij[0] - (image.shape[0] - template.shape[0]) / 2.
-    dx = best_ij[1] - (image.shape[1] - template.shape[1]) / 2.
+    dr = best_ij[0] - (image2.shape[0] - template.shape[0]) / 2.
+    dc = best_ij[1] - (image2.shape[1] - template.shape[1]) / 2.
 
     if mcc_norm:
         best_r = (best_r - np.median(best_result)) / np.std(best_result)
 
-    return dx, dy, best_a, best_r, best_h, best_result, best_template
+    return dc, dr, best_a, best_r, best_h, best_result, best_template
 
-def use_mcc(x1p, y1p, x2p, y2p, border, img1, img2, img_size, alpha0, **kwargs):
+def use_mcc(c1, r1, c2fg, r2fg, border, img1, img2, img_size, alpha0, **kwargs):
     """ Apply MCC algorithm for one point
 
     Parameters
     ----------
-        x1p : float, X coordinate on image 1
-        y1p : float, Y coordinate on image 1
-        x2p : float, first guess X coordinate on image 2
-        y2p : float, first guess Y coordinate on image 2
+        c1 : float, column coordinate on image 1
+        r1 : float, row coordinate on image 1
+        c2fg : int, first guess column coordinate on image 2
+        r2fg : int, first guess row coordinate on image 2
         border : int, searching distance (border around template)
         img1 : 2D array - full szie image 1
         img2 : 2D array - full szie image 2
@@ -198,30 +196,30 @@ def use_mcc(x1p, y1p, x2p, y2p, border, img1, img2, img_size, alpha0, **kwargs):
         h : float, Hessian of CC at MCC point
 
     """
-    x2p, y2p = int(round(x2p)), int(round(y2p))
-
     hws = int(img_size / 2.)
-    image = img2[int(y2p-hws-border):int(y2p+hws+border+1),
-                 int(x2p-hws-border):int(x2p+hws+border+1)]
+    image = img2[int(r2fg-hws-border):int(r2fg+hws+border+1),
+                 int(c2fg-hws-border):int(c2fg+hws+border+1)]
 
-    dx, dy, a, r, h, bestr, bestt = rotate_and_match(img1, x1p, y1p,
-                                                     img_size, image,
-                                                     alpha0, **kwargs)
-    x2 = x2p + dx
-    y2 = y2p + dy
+    dc, dr, best_a, best_r, best_h, best_result, best_template = rotate_and_match(img1, c1, r1,
+                                                                                  img_size,
+                                                                                  image,
+                                                                                  alpha0,
+                                                                                  **kwargs)
+    c2 = c2fg + dc
+    r2 = r2fg + dr
 
-    return x2, y2, a, r, h
+    return c2, r2, best_a, best_r, best_h
 
 def use_mcc_mp(i):
-    """ Use MCC in multiprocessing
+    """ Use MCC
     Uses global variables where first guess and images are stored
     Parameters
     ---------
         i : int, index of point
     Returns
     -------
-        x2 : float, result X coordinate on image 2
-        y2 : float, result X coordinate on image 2
+        c2 : float, result X coordinate on image 2
+        r2 : float, result X coordinate on image 2
         a : float, angle that gives highest MCC
         r : float, MCC
         h : float, Hessian of CC at MCC point
@@ -230,8 +228,8 @@ def use_mcc_mp(i):
     global shared_args, shared_kwargs
 
     # structure of shared_args:
-    # x1_dst, y1_dst, x2fg, y2fg, border, img1, img2, img_size, alpha0
-    x2, y2, a, r, h = use_mcc(shared_args[0][i],
+    # c1pm1i, r1pm1i, c2fg, r2fg, brd2, img1, img2, img_size, alpha0, kwargs
+    c2, r2, a, r, h = use_mcc(shared_args[0][i],
                               shared_args[1][i],
                               shared_args[2][i],
                               shared_args[3][i],
@@ -244,24 +242,25 @@ def use_mcc_mp(i):
     if i % 100 == 0:
         print('%02.0f%% %07.1f %07.1f %07.1f %07.1f %+05.1f %04.2f %04.2f' % (
             100 * float(i) / len(shared_args[0]),
-            shared_args[0][i], shared_args[1][i], x2, y2, a, r, h))
-    return x2, y2, a, r, h
+            shared_args[0][i], shared_args[1][i], c2, r2, a, r, h))
+    return c2, r2, a, r, h
 
-def prepare_first_guess(x1_dst, y1_dst, n1, x1, y1, n2, x2, y2, img_size,
+def prepare_first_guess(c2pm1, r2pm1, n1, c1, r1, n2, c2, r2, img_size,
                         min_fg_pts=5,
                         min_border=20,
                         max_border=50,
                         old_border=True, **kwargs):
-    ''' For the given coordinates estimate the First Guess
+    ''' For the given intial coordinates estimate the approximate final coordinates
     Parameters
     ---------
-        x1_dst : 1D vector, X coordinates of results on image 1
-        y1_dst : 1D vector, Y coordinates of results on image 1
-        x1 : 1D vector, X coordinates of keypoints on image 1
-        y1 : 1D vector, Y coordinates of keypoints on image 1
-        x2 : 1D vector, X coordinates of keypoints on image 2
-        y2 : 1D vector, Y coordinates of keypoints on image 2
-        img1 : 2D array, the fist image
+        c2_pm1 : 1D vector, initial PM column on image 2
+        r2_pm1 : 1D vector, initial PM rows of image 2
+        n1 : Nansat, the fist image with 2D array
+        c1 : 1D vector, initial FT columns on img1
+        r1 : 1D vector, initial FT rows on img2
+        n2 : Nansat, the second image with 2D array
+        c2 : 1D vector, final FT columns on img2
+        r2 : 1D vector, final FT rows on img2
         img_size : int, size of template
         min_fg_pts : int, minimum number of fist guess points
         min_border : int, minimum searching distance
@@ -272,79 +271,78 @@ def prepare_first_guess(x1_dst, y1_dst, n1, x1, y1, n2, x2, y2, img_size,
             x2y2_interpolation_near
     Returns
     -------
-        x2fg : 1D vector, first guess X coordinates of results on image 2
-        y2fg : 1D vector, first guess X coordinates of results on image 2
+        c2_fg : 1D vector, approximate final PM columns on img2 (first guess)
+        r2_fg : 1D vector, approximate final PM rows on img2 (first guess)
         border : 1D vector, searching distance
     '''
-    shape1 = n1.shape()
-    if len(x1) > min_fg_pts:
-        # interpolate 1st guess using 2nd order polynomial
-        x2p2, y2p2 = x2y2_interpolation_poly(x1, y1, x2, y2,
-                                             x1_dst, y1_dst, **kwargs)
+    n2_shape = n2.shape()
+    # convert initial FT points to coordinates on image 2
+    lon1, lat1 = n1.transform_points(c1, r1)
+    c1n2, r1n2 = n2.transform_points(lon1, lat1, 1)
 
-        # interpolate 1st guess using griddata
-        x2fg, y2fg = x2y2_interpolation_near(x1, y1, x2, y2,
-                                             x1_dst, y1_dst, **kwargs)
+    # interpolate 1st guess using 2nd order polynomial
+    c2p2, r2p2 = np.round(interpolation_poly(c1n2, r1n2, c2, r2, c2pm1, r2pm1, **kwargs))
 
-        # TODO:
-        # Now border is proportional to the distance to the point
-        # BUT it assumes that:
-        #     close to any point error is small, and
-        #     error varies between points
-        # What if error does not vary with distance from the point?
-        # Border can be estimated as error of the first guess
-        # (x2 - x2_predicted_with_polynom) gridded using nearest neighbour.
-        if old_border:
-            # find distance to nearest neigbour and create border matrix
-            border_img = get_distance_to_nearest_keypoint(x1, y1, shape1)
-            border = np.zeros(x1_dst.size) + max_border
-            gpi = ((x1_dst >= 0) * (x1_dst < shape1[1]) *
-                   (y1_dst >= 0) * (y1_dst < shape1[0]))
-            border[gpi] = border_img[y1_dst.astype(np.int16)[gpi],
-                                     x1_dst.astype(np.int16)[gpi]]
-        else:
-            x2tst, y2tst = x2y2_interpolation_poly(x1, y1, x2, y2, x1, y1,
-                                                                    **kwargs)
-            x2dif, y2dif = x2y2_interpolation_near(x1, y1,
-                                                   x2-x2tst, y2-y2tst,
-                                                   x1_dst, y1_dst,
-                                                   **kwargs)
-            border = np.hypot(x2dif, y2dif)
+    # interpolate 1st guess using griddata
+    c2fg, r2fg = np.round(interpolation_near(c1n2, r1n2, c2, r2, c2pm1, r2pm1, **kwargs))
 
-        # define searching distance
-        border[border < min_border] = min_border
-        border[border > max_border] = max_border
-        border[np.isnan(y2fg)] = max_border
-
-        # define FG based on P2 and GD
-        x2fg[np.isnan(x2fg)] = x2p2[np.isnan(x2fg)]
-        y2fg[np.isnan(y2fg)] = y2p2[np.isnan(y2fg)]
+    # TODO:
+    # Now border is proportional to the distance to the point
+    # BUT it assumes that:
+    #     close to any point error is small, and
+    #     error varies between points
+    # What if error does not vary with distance from the point?
+    # Border can be estimated as error of the first guess
+    # (x2 - x2_predicted_with_polynom) gridded using nearest neighbour.
+    if old_border:
+        # find distance to nearest neigbour and create border matrix
+        border_img = get_distance_to_nearest_keypoint(c2, r2, n2_shape)
+        border = np.zeros(c2pm1.size) + max_border
+        gpi = ((c2pm1 >= 0) * (c2pm1 < n2_shape[1]) *
+               (r2pm1 >= 0) * (r2pm1 < n2_shape[0]))
+        border[gpi] = border_img[np.round(r2pm1[gpi]).astype(np.int16),
+                                 np.round(c2pm1[gpi]).astype(np.int16)]
     else:
-        lon_dst, lat_dst = n1.transform_points(x1_dst, y1_dst)
-        x2fg, y2fg = n2.transform_points(lon_dst, lat_dst, 1)
-        border = np.zeros(len(x1_dst)) + max_border*2
+        c2tst, r2tst = interpolation_poly(c1n2, r1n2, c2, r2, c1n2, r1n2, **kwargs)
+        c2dif, r2dif = interpolation_near(c1n2, r1n2,
+                                               c2-c2tst, r2-r2tst,
+                                               c2pm1, r2pm1,
+                                               **kwargs)
+        border = np.hypot(c2dif, r2dif)
 
-    return x2fg, y2fg, border
+    # define searching distance
+    border[border < min_border] = min_border
+    border[border > max_border] = max_border
+    border[np.isnan(c2fg)] = max_border
+    border = np.floor(border)
 
-def pattern_matching(lon1_dst, lat1_dst,
-                     n1, x1, y1, n2, x2, y2,
+    # define FG based on P2 and GD
+    c2fg[np.isnan(c2fg)] = c2p2[np.isnan(c2fg)]
+    r2fg[np.isnan(r2fg)] = r2p2[np.isnan(r2fg)]
+
+    return c2fg, r2fg, border
+
+def pattern_matching(lon_pm1, lat_pm1,
+                     n1, c1, r1, n2, c2, r2,
                      margin=0,
                      img_size=35,
                      threads=5,
+                     srs='+proj=latlong +datum=WGS84 +ellps=WGS84 +no_defs',
                      **kwargs):
     ''' Run Pattern Matching Algorithm on two images
     Parameters
     ---------
-        lon_dst : 1D vector, longitude of results on image 1
-        lon_dst : 1D vector, latitude of results on image 1
+        lon_pm1 : 1D vector, longitudes of destination initial points
+        lat_pm1 : 1D vector, latitudes of destination initial points
         n1 : Nansat, the fist image with 2D array
-        x1 : 1D vector, X coordinates of keypoints on image 1
-        y1 : 1D vector, Y coordinates of keypoints on image 1
+        c1 : 1D vector, initial FT columns on img1
+        r1 : 1D vector, initial FT rows on img2
         n2 : Nansat, the second image with 2D array
-        x2 : 1D vector, X coordinates of keypoints on image 2
-        y2 : 1D vector, Y coordinates of keypoints on image 2
+        c2 : 1D vector, final FT columns on img2
+        r2 : 1D vector, final FT rows on img2
         img_size : int, size of template
         threads : int, number of parallel threads
+        srs: str, spatial refernce system of the drift vectors (proj4 or WKT)
         **kwargs : optional parameters for:
             prepare_first_guess
                 min_fg_pts : int, minimum number of fist guess points
@@ -374,27 +372,40 @@ def pattern_matching(lon1_dst, lat1_dst,
         lat2_dst : 1D vector, latitude  of results on image 2
     '''
     img1, img2 = n1[1], n2[1]
-    dst_shape = lon1_dst.shape
-    # convert lon/lat to pixe/line of the first image
-    x1_dst, y1_dst = n1.transform_points(lon1_dst.flatten(), lat1_dst.flatten(), 1)
+    dst_shape = lon_pm1.shape
 
-    x2fg, y2fg, border = prepare_first_guess(x1_dst, y1_dst,
-                                             n1, x1, y1,
-                                             n2, x2, y2,
-                                             img_size,
-                                             **kwargs)
+    # coordinates of starting PM points on image 2
+    c2pm1, r2pm1 = n2.transform_points(lon_pm1.flatten(), lat_pm1.flatten(), 1)
 
-    # find good input points
-    hws = img_size / 2
+    # integer coordinates of starting PM points on image 2
+    c2pm1i, r2pm1i = np.round([c2pm1, r2pm1])
+
+    # fake cooridinates for debugging
+    #c2pm1, r2pm1 = np.meshgrid(np.arange(c2pm1i.min(), c2pm1i.max(), 25),
+    #                           np.arange(c2pm1i.min(), c2pm1i.max(), 25))
+    #dst_shape = c2pm1.shape
+    #c2pm1i, r2pm1i = np.round([c2pm1.flatten(), r2pm1.flatten()])
+
+    # coordinates of starting PM points on image 1 (correposond to integer coordinates in img2)
+    lon1i, lat1i = n2.transform_points(c2pm1i, r2pm1i)
+    c1pm1i, r1pm1i = n1.transform_points(lon1i, lat1i, 1)
+
+    # approximate final PM points on image 2 (the first guess)
+    c2fg, r2fg, brd2 = prepare_first_guess(c2pm1i, r2pm1i, n1, c1, r1, n2, c2, r2, img_size, **kwargs)
+    #c2fg, r2fg = c2pm1i, r2pm1i
+    #brd2 = np.zeros_like(c2fg) + 50
+
+    # find valid input points
+    hws = round(img_size / 2) + 1
     hws_hypot = np.hypot(hws, hws)
-    gpi = ((x2fg-border-hws-margin > 0) *
-           (y2fg-border-hws-margin > 0) *
-           (x2fg+border+hws+margin < n2.shape()[1]) *
-           (y2fg+border+hws+margin < n2.shape()[0]) *
-           (x1_dst-hws_hypot-margin > 0) *
-           (y1_dst-hws_hypot-margin > 0) *
-           (x1_dst+hws_hypot+margin < n1.shape()[1]) *
-           (y1_dst+hws_hypot+margin < n1.shape()[0]))
+    gpi = ((c2fg-brd2-hws-margin > 0) *
+           (r2fg-brd2-hws-margin > 0) *
+           (c2fg+brd2+hws+margin < n2.shape()[1]) *
+           (r2fg+brd2+hws+margin < n2.shape()[0]) *
+           (c1pm1i-hws_hypot-margin > 0) *
+           (r1pm1i-hws_hypot-margin > 0) *
+           (c1pm1i+hws_hypot+margin < n1.shape()[1]) *
+           (r1pm1i+hws_hypot+margin < n1.shape()[0]))
 
     alpha0 = get_initial_rotation(n1, n2)
 
@@ -406,14 +417,12 @@ def pattern_matching(lon1_dst, lat1_dst,
 
     if threads == 0:
         # run MCC without threads
-        _init_pool(x1_dst[gpi], y1_dst[gpi], x2fg[gpi], y2fg[gpi], border[gpi],
-                      img1, img2, img_size, alpha0, kwargs)
+        _init_pool(c1pm1i[gpi], r1pm1i[gpi], c2fg[gpi], r2fg[gpi], brd2[gpi], img1, img2, img_size, alpha0, kwargs)
         results = [use_mcc_mp(i) for i in range(len(gpi[gpi]))]
     else:
         # run MCC in multiple threads
         p = Pool(threads, initializer=_init_pool,
-                initargs=(x1_dst[gpi], y1_dst[gpi], x2fg[gpi], y2fg[gpi], border[gpi],
-                          img1, img2, img_size, alpha0, kwargs))
+                initargs=(c1pm1i[gpi], r1pm1i[gpi], c2fg[gpi], r2fg[gpi], brd2[gpi], img1, img2, img_size, alpha0, kwargs))
         results = p.map(use_mcc_mp, range(len(gpi[gpi])))
         p.close()
         p.terminate()
@@ -431,22 +440,36 @@ def pattern_matching(lon1_dst, lat1_dst,
     else:
         results = np.array(results)
 
-        x2_dst = results[:,0]
-        y2_dst = results[:,1]
+        # coordinates of final PM points on image 2 (correspond to integer intial coordinates)
+        c2pm2i = results[:,0]
+        r2pm2i = results[:,1]
+
+        # coordinatesof final PM points on image 2 (correspond to real intial coordinates)
+        dci, dri, = c2pm1 - c2pm1i,  r2pm1 - r2pm1i
+        c2pm2, r2pm2 = c2pm2i + dci[gpi], r2pm2i + dri[gpi]
+
+        # coordinates of initial PM points on destination grid and coordinates system
+        xpm1, ypm1 = n2.transform_points(c2pm1, r2pm1, 0, NSR(srs))
+        xpm1_grd = xpm1.reshape(dst_shape)
+        ypm1_grd = ypm1.reshape(dst_shape)
+
+        # coordinates of final PM points on destination grid and coordinates system
+        xpm2, ypm2 = n2.transform_points(c2pm2, r2pm2, 0, NSR(srs))
+        xpm2_grd = _fill_gpi(dst_shape, gpi, xpm2)
+        ypm2_grd = _fill_gpi(dst_shape, gpi, ypm2)
+        lon_pm2, lat_pm2 = n2.transform_points(c2pm2, r2pm2, 0)
+
+        # speed vectors on destination grid and coordinates system
+        u = xpm2_grd - xpm1_grd
+        v = ypm2_grd - ypm1_grd
+
+        # angle, correlation and hessian on destination grid
         a = results[:,2]
         r = results[:,3]
         h = results[:,4]
-
-        u, v, lon1, lat1, lon2, lat2 = get_drift_vectors(n1, x1_dst[gpi], y1_dst[gpi],
-                                                         n2, x2_dst, y2_dst,
-                                                         dst_shape=dst_shape, gpi=gpi,
-                                                         **kwargs)
-        lon2_dst = _fill_gpi(dst_shape, gpi, lon2)
-        lat2_dst = _fill_gpi(dst_shape, gpi, lat2)
-        u = _fill_gpi(dst_shape, gpi, u)
-        v = _fill_gpi(dst_shape, gpi, v)
         a = _fill_gpi(dst_shape, gpi, a)
         r = _fill_gpi(dst_shape, gpi, r)
         h = _fill_gpi(dst_shape, gpi, h)
 
-    return u, v, a, r, h, lon2_dst, lat2_dst
+
+    return u, v, a, r, h, lon_pm2, lat_pm2
