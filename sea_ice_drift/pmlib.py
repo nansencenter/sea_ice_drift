@@ -20,7 +20,6 @@ from scipy import ndimage as nd
 import matplotlib.pyplot as plt
 
 import cv2
-import gdal
 
 from nansat import NSR
 
