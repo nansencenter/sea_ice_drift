@@ -43,7 +43,7 @@ from sea_ice_drift.ftlib import (find_key_points,
                                  lstsq_filter,
                                  feature_tracking)
 
-from sea_ice_drift.pmlib import (get_rotated_template,
+from sea_ice_drift.pmlib import (get_template,
                                  get_distance_to_nearest_keypoint,
                                  get_initial_rotation,
                                  rotate_and_match)
@@ -253,10 +253,10 @@ class SeaIceDriftFTLibTests(SeaIceDriftTestBase):
 
 
 class SeaIceDriftPMLibTests(SeaIceDriftTestBase):
-    def test_get_rotated_template(self):
+    def test_get_template(self):
         ''' Shall plot two templates with and without rotation '''
-        temp_rot00 = get_rotated_template(self.img1, 100, 300, 50, 0)
-        temp_rot10 = get_rotated_template(self.img1, 100, 300, 50, 30)
+        temp_rot00 = get_template(self.img1, 100, 300, 0, 50)
+        temp_rot10 = get_template(self.img1, 100, 300, 30, 50)
 
         plt.subplot(1,2,1)
         plt.imshow(temp_rot00, interpolation='nearest')

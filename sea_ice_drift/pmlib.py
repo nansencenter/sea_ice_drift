@@ -184,7 +184,7 @@ def use_mcc(c1, r1, c2fg, r2fg, border, img1, img2, img_size, alpha0, **kwargs):
         img2 : 2D array - full szie image 2
         img_size : int, template size
         alpha0 : float, rotation between two images
-        kwargs : dict, params for rotate_and_match, get_rotated_template, get_hessian
+        kwargs : dict, params for rotate_and_match, get_template, get_hessian
     Returns
     -------
         x2 : float, result X coordinate on image 2
@@ -352,7 +352,7 @@ def pattern_matching(lon_pm1, lat_pm1,
                 mtype : int - type of cross-correlation
                 template_matcher : func - function to use for template matching
                 mcc_norm : bool, normalize MCC by AVG and STD ?
-            get_rotated_template
+            get_template
                 rot_order : resampling order for rotation
             get_hessian
                 hes_norm : bool, normalize Hessian by AVG and STD?

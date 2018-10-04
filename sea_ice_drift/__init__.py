@@ -43,7 +43,6 @@ __all__ = [
     'max_drift_filter',
     'lstsq_filter',
 
-    'get_rotated_template',
     'get_distance_to_nearest_keypoint',
     'get_initial_rotation',
     'rotate_and_match',
