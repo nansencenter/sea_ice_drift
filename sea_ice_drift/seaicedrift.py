@@ -16,8 +16,6 @@ from __future__ import absolute_import
 
 import numpy as np
 
-from nansat import Nansat
-
 from sea_ice_drift.lib import get_n, get_drift_vectors
 from sea_ice_drift.ftlib import feature_tracking
 from sea_ice_drift.pmlib import pattern_matching

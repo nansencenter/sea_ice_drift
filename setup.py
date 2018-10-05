@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = "sea_ice_drift",
-    version = "0.6",
+    version = "0.7",
     author = 'Anton Korosov, Stefan Muckenhuber',
     author_email = "anton.korosov@nersc.no",
     description = ("Drift of sea ice from satellite data using feature tracking and pattern matching methods"),
@@ -10,9 +10,10 @@ setup(
     license = "GNU General Public License v3",
     keywords = "sar, feature tracking, pattern matching, ice drift",
     url = "https://github.com/nansencenter/sea_ice_drift",
-    download_url='https://github.com/nansencenter/sea_ice_drift/archive/v0.6.tar.gz',
+    download_url='https://github.com/nansencenter/sea_ice_drift/archive/v0.7.tar.gz',
     packages=['sea_ice_drift'],
     test_suite="sea_ice_drift.tests",
+    install_requires=['nansat'],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Plugins',

@@ -16,8 +16,8 @@ from __future__ import absolute_import, print_function
 import matplotlib.pyplot as plt
 
 import numpy as np
-
 from scipy.interpolate import griddata
+import gdal
 
 from nansat import Nansat, Domain, NSR
 
