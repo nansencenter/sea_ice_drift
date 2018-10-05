@@ -19,12 +19,16 @@ regular grid.
  * [OpenCV](http://opencv.org) - open-source computer vision
 
 ## Installation
-  * Install Python, OpenCV and other requirements using [miniconda](http://conda.pydata.org/miniconda.html):
-    `conda create -q --yes -n py3drift -c conda-forge python=3.6 numpy scipy matplotlib netcdf4 gdal opencv nose`
-  * Activate the environment:
-    `source activate py3drift`
- * Use pip to install from the repo:
-    `pip install https://github.com/nansencenter/sea_ice_drift/archive/v0.7.tar.gz`
+```
+# Install Python, OpenCV and other requirements using miniconda (http://conda.pydata.org/miniconda.html):
+conda create -q --yes -n py3drift -c conda-forge python=3.6 numpy scipy matplotlib netcdf4 gdal opencv nose
+
+# Activate the conda environment with installed requirements:
+source activate py3drift
+
+# Use pip to install from the repo:
+pip install https://github.com/nansencenter/sea_ice_drift/archive/v0.7.tar.gz
+```
 
 ## Example
 ```
