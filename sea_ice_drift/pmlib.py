@@ -456,6 +456,8 @@ def pattern_matching(lon_pm1, lat_pm1,
         xpm2_grd = _fill_gpi(dst_shape, gpi, xpm2)
         ypm2_grd = _fill_gpi(dst_shape, gpi, ypm2)
         lon_pm2, lat_pm2 = n2.transform_points(c2pm2, r2pm2, 0)
+        lon_pm2_grd = _fill_gpi(dst_shape, gpi, lon_pm2)
+        lat_pm2_grd = _fill_gpi(dst_shape, gpi, lat_pm2)
 
         # speed vectors on destination grid and coordinates system
         u = xpm2_grd - xpm1_grd
@@ -470,4 +472,4 @@ def pattern_matching(lon_pm1, lat_pm1,
         h = _fill_gpi(dst_shape, gpi, h)
 
 
-    return u, v, a, r, h, lon_pm2, lat_pm2
+    return u, v, a, r, h, lon_pm2_grd, lat_pm2_grd

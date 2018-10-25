@@ -28,14 +28,13 @@ from sea_ice_drift import SeaIceDrift
 
 # download Sentinel-1 data from https://scihub.copernicus.eu/dhus
 # or get small size sample files here:
-# wget ftp://ftp.nersc.no/nansat/test_data/generic/S1B_EW_GRDM_1SDH_20161005T101835_20161005T101935_002370_004016_FBF1.SAFE.tif
-# wget ftp://ftp.nersc.no/nansat/test_data/generic/S1A_EW_GRDM_1SDH_20161005T142446_20161005T142546_013356_0154D8_C3EC.SAFE.tif
-
+# wget https://github.com/nansencenter/sea_ice_drift_test_files/raw/master/S1A_EW_GRDM_1SDH_20161005T142446.tif
+# wget https://github.com/nansencenter/sea_ice_drift_test_files/raw/master/S1B_EW_GRDM_1SDH_20161005T101835.tif
 # ==== ICE DRIFT RETRIEVAL ====
 
 # open files, read 'sigma0_HV' band and convert to UInt8 image
-f1 = 'S1B_EW_GRDM_1SDH_20161005T101835_20161005T101935_002370_004016_FBF1.SAFE.tif'
-f2 = 'S1A_EW_GRDM_1SDH_20161005T142446_20161005T142546_013356_0154D8_C3EC.SAFE.tif'
+f1 = 'S1B_EW_GRDM_1SDH_20161005T101835.tif'
+f2 = 'S1A_EW_GRDM_1SDH_20161005T142446.tif'
 sid = SeaIceDrift(f1, f2)
 
 # apply Feature Tracking algorithm and retrieve ice drift speed
