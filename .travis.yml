@@ -1,46 +1,23 @@
 language: python
 python:
-  - 2.7
-sudo: false
+  - "2.7"
+  - "3.6"
 
-env:
- - OPENCV_VERSION=2.4.12
- - OPENCV_VERSION=3.1.0
-
-# Setup miniconda
 before_install:
-  - if [[ ! -e $HOME/miniconda/bin ]]; then
-        wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
-        chmod +x miniconda.sh;
-        ./miniconda.sh -b -f -p $HOME/miniconda;
-    fi
-  - export OLD_PATH=$PATH
+  - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O $HOME/miniconda.sh
+  - chmod +x $HOME/miniconda.sh
+  - $HOME/miniconda.sh -b -f -p $HOME/miniconda
   - export PATH=$HOME/miniconda/bin:$PATH
-  - wget ftp://ftp.nersc.no/pub/nansat/test_data/generic/S1A_EW_GRDM_1SDH_20150328T074433_20150328T074533_005229_0069A8_801E_test.tif
-  - wget ftp://ftp.nersc.no/pub/nansat/test_data/generic/S1A_EW_GRDM_1SDH_20150329T163452_20150329T163552_005249_006A15_FD89_test.tif
+  - wget ftp://ftp.nersc.no/nansat/test_data/generic/S1A_EW_GRDM_1SDH_20161005T142446_20161005T142546_013356_0154D8_C3EC.SAFE.tif
+  - wget ftp://ftp.nersc.no/nansat/test_data/generic/S1B_EW_GRDM_1SDH_20161005T101835_20161005T101935_002370_004016_FBF1.SAFE.tif
   - export ICE_DRIFT_TEST_DATA_DIR=./
 
 install:
-  - conda update -q --yes conda
-  - conda install -q --yes -c conda-forge numpy scipy matplotlib nose pillow basemap netcdf4 gdal opencv=$OPENCV_VERSION
-  - export GDAL_DATA=/home/vagrant/miniconda/share/gdal/
-  - export GEOS_DIR=/home/vagrant/miniconda/
-  - python -c 'import gdal; print gdal.__file__'
-  - python -c 'from mpl_toolkits.basemap import Basemap'
-  - pip install coveralls
-  - pip install cfunits
-  - pip install https://github.com/nansencenter/nansat/archive/master.tar.gz
+  - conda create -q --yes -n test-environment -c conda-forge python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib pillow basemap netcdf4 gdal opencv nansat coverage nose
+  - source activate test-environment
   - python setup.py install
 
-script: #"cd ..; nosetests --with-coverage --cover-package=nansat nansat.tests"
+script:
   - coverage run --source=sea_ice_drift --omit=sea_ice_drift/tests.py setup.py test
 
-after_success:
-  - coveralls
-  # Resetting path so uploading of cache with curl succeeds.
-  - export PATH=$OLD_PATH
-
-after_failure:
-  # Resetting path so uploading of cache with curl succeeds.
-  - export PATH=$OLD_PATH
 
