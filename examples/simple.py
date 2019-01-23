@@ -32,6 +32,12 @@ from sea_ice_drift import SeaIceDrift
 # wget https://github.com/nansencenter/sea_ice_drift_test_files/raw/master/S1B_EW_GRDM_1SDH_20161005T101835.tif
 # ==== ICE DRIFT RETRIEVAL ====
 
+# define border for region of interest
+lone = -3
+lonw = 2
+lats = 86.4
+latn = 86.8
+
 # open files, read 'sigma0_HV' band and convert to UInt8 image
 f1 = 'S1B_EW_GRDM_1SDH_20161005T101835.tif'
 f2 = 'S1A_EW_GRDM_1SDH_20161005T142446.tif'
@@ -42,8 +48,8 @@ sid = SeaIceDrift(f1, f2)
 uft, vft, lon1ft, lat1ft, lon2ft, lat2ft = sid.get_drift_FT()
 
 # user defined grid of points:
-lon1pm, lat1pm = np.meshgrid(np.linspace(-3, 2, 50),
-                     np.linspace(86.4, 86.8, 50))
+lon1pm, lat1pm = np.meshgrid(np.linspace(lone, lonw, 50),
+                     np.linspace(lats, latn, 50))
 
 # apply Pattern Matching and find sea ice drift speed
 # for the given grid of points
@@ -58,26 +64,27 @@ lon1, lat1 = sid.n1.get_border()
 lon2, lat2 = sid.n2.get_border()
 
 # prepare projected images with sigma0_HV
-sid.n1.reproject(Domain(NSR().wkt, '-te -3 86.4 2 86.8 -ts 500 500'))
+d = Domain(NSR().wkt, '-te %f %f %f %f -ts 500 500' % (lone, lats, lonw, latn))
+sid.n1.reproject(d)
 s01 = sid.n1['sigma0_HV']
-sid.n2.reproject(Domain(NSR().wkt, '-te -3 86.4 2 86.8 -ts 500 500'))
+sid.n2.reproject(d)
 s02 = sid.n2['sigma0_HV']
 
 # plot the projected image from the first SAR scene
-plt.imshow(s01, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
+plt.imshow(s01, extent=[lone, lonw, lats, latn], cmap='gray', aspect=12)
 # plot vectors of sea ice drift from Feature Tracking
 plt.quiver(lon1ft, lat1ft, uft, vft, color='r',
            angles='xy', scale_units='xy', scale=0.5)
 # plot border of the second SAR scene
 plt.plot(lon2, lat2, '.-r')
 # set X/Y limits of figure
-plt.xlim([-3, 2])
-plt.ylim([86.4, 86.8])
+plt.xlim([lone, lonw])
+plt.ylim([lats, latn])
 plt.savefig('sea_ice_drift_FT_img1.png', dpi=150, bbox_inches='tight', pad_inches=0)
 plt.close('all')
 
 # plot the projected image from the second SAR scene
-plt.imshow(s02, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
+plt.imshow(s02, extent=[lone, lonw, lats, latn], cmap='gray', aspect=12)
 # filter only high quality pixels
 gpi = rpm > 0.4
 # plot vectors of sea ice drift from Feature Tracking, color by MCC
@@ -86,7 +93,7 @@ plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi],
 # plot border of the first SAR scene
 plt.plot(lon1, lat1, '.-r')
 # set X/Y limits of figure
-plt.xlim([-3, 2])
-plt.ylim([86.4, 86.8])
+plt.xlim([lone, lonw])
+plt.ylim([lats, latn])
 plt.savefig('sea_ice_drift_PM_img2.png', dpi=150, bbox_inches='tight', pad_inches=0)
 plt.close('all')
