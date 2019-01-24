@@ -144,8 +144,8 @@ def interpolation_poly(x1, y1, x2, y2, x1grd, y1grd, order=1, **kwargs):
         A += [x1**3, y1**3, x1**2*y1, y1**2*x1]
 
     A = np.vstack(A).T
-    Bx = np.linalg.lstsq(A, x2, rcond=None)[0]
-    By = np.linalg.lstsq(A, y2, rcond=None)[0]
+    Bx = np.linalg.lstsq(A, x2, rcond=-1)[0]
+    By = np.linalg.lstsq(A, y2, rcond=-1)[0]
     x1grdF = x1grd.flatten()
     y1grdF = y1grd.flatten()
 
