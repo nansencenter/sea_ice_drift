@@ -13,7 +13,7 @@ before_install:
   - export ICE_DRIFT_TEST_DATA_DIR=./
 
 install:
-  - conda create -q --yes -n test-environment -c conda-forge python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib netcdf4 gdal opencv nose coverage
+  - conda create -q --yes -n test-environment -c conda-forge python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib netcdf4 gdal=2.4.2 opencv nose coverage
   - source activate test-environment
   - python setup.py install
 
