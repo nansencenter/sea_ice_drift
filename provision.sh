@@ -14,7 +14,9 @@ python setup.py install
 echo "#!/bin/sh -e
 exec 1>/tmp/rc.local.log 2>&1  # send stdout and stderr from rc.local to a log file
 set -x
-su vagrant -c \"/home/vagrant/miniconda/envs/py3opencv/bin/jupyter notebook --no-browser --notebook-dir=/vagrant --NotebookApp.token='' --ip=0.0.0.0\" &
+su vagrant -c \"/home/vagrant/miniconda/envs/py3opencv/bin/jupyter notebook --no-browser --notebook-dir=/examples --NotebookApp.token='' --ip=0.0.0.0\" &
+sudo mount -t vboxsf -o uid=1000,gid=1000 examples /examples
+exit 0
 " > /etc/rc.local
 chown vagrant:vagrant $VHOME -R
-su vagrant -c "/home/vagrant/miniconda/envs/py3opencv/bin/jupyter notebook --no-browser --notebook-dir=/vagrant --NotebookApp.token='' --ip=0.0.0.0" &
+su vagrant -c "/home/vagrant/miniconda/envs/py3opencv/bin/jupyter notebook --no-browser --notebook-dir=/examples --NotebookApp.token='' --ip=0.0.0.0" &
