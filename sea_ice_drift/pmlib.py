@@ -332,17 +332,28 @@ def pattern_matching(lon_pm1, lat_pm1,
     ''' Run Pattern Matching Algorithm on two images
     Parameters
     ---------
-        lon_pm1 : 1D vector, longitudes of destination initial points
-        lat_pm1 : 1D vector, latitudes of destination initial points
-        n1 : Nansat, the fist image with 2D array
-        c1 : 1D vector, initial FT columns on img1
-        r1 : 1D vector, initial FT rows on img2
-        n2 : Nansat, the second image with 2D array
-        c2 : 1D vector, final FT columns on img2
-        r2 : 1D vector, final FT rows on img2
-        img_size : int, size of template
-        threads : int, number of parallel threads
-        srs: str, spatial refernce system of the drift vectors (proj4 or WKT)
+        lon_pm1 : 1D vector
+            longitudes of destination initial points
+        lat_pm1 : 1D vector
+            latitudes of destination initial points
+        n1 : Nansat
+            the fist image with 2D array
+        c1 : 1D vector
+            initial FT columns on img1
+        r1 : 1D vector
+            initial FT rows on img2
+        n2 : Nansat
+            the second image with 2D array
+        c2 : 1D vector
+            final FT columns on img2
+        r2 : 1D vector
+            final FT rows on img2
+        img_size : int
+            size of template
+        threads : int
+            number of parallel threads
+        srs: str
+            destination spatial refernce system of the drift vectors (proj4 or WKT)
         **kwargs : optional parameters for:
             prepare_first_guess
                 min_fg_pts : int, minimum number of fist guess points
@@ -363,13 +374,20 @@ def pattern_matching(lon_pm1, lat_pm1,
                 nsr: Nansat.NSR(), projection that defines the grid
     Returns
     -------
-        u : 1D vector, eastward ice drift speed, m/s
-        v : 1D vector, northward ice drift speed, m/s
-        a : 1D vector, angle that gives the highes MCC
-        r : 1D vector, MCC
-        h : 1D vector, Hessian of CC at MCC point
-        lon2_dst : 1D vector, longitude of results on image 2
-        lat2_dst : 1D vector, latitude  of results on image 2
+        u : 1D vector
+            eastward ice drift displacement [destination SRS units]
+        v : 1D vector
+            northward ice drift displacement [destination SRS units]
+        a : 1D vector
+            angle that gives the highes MCC
+        r : 1D vector
+            Maximum cross correlation (MCC)
+        h : 1D vector
+            Hessian of CC at MCC point
+        lon2_dst : 1D vector
+            longitude of results on image 2
+        lat2_dst : 1D vector
+            latitude  of results on image 2
     '''
     t0 = time.time()
     img1, img2 = n1[1], n2[1]
@@ -458,6 +476,8 @@ def pattern_matching(lon_pm1, lat_pm1,
         xpm2_grd = _fill_gpi(dst_shape, gpi, xpm2)
         ypm2_grd = _fill_gpi(dst_shape, gpi, ypm2)
         lon_pm2, lat_pm2 = n2.transform_points(c2pm2, r2pm2, 0)
+        lon_pm2_grd = _fill_gpi(dst_shape, gpi, lon_pm2)
+        lat_pm2_grd = _fill_gpi(dst_shape, gpi, lat_pm2)
 
         # speed vectors on destination grid and coordinates system
         u = xpm2_grd - xpm1_grd
@@ -471,5 +491,4 @@ def pattern_matching(lon_pm1, lat_pm1,
         r = _fill_gpi(dst_shape, gpi, r)
         h = _fill_gpi(dst_shape, gpi, h)
 
-
-    return u, v, a, r, h, lon_pm2, lat_pm2
+    return u, v, a, r, h, lon_pm2_grd, lat_pm2_grd

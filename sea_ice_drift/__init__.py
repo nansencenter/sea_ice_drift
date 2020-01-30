@@ -33,8 +33,8 @@ __all__ = [
     'get_speed_ms',
     'get_displacement_pix',
     'get_denoised_object',
-    'x2y2_interpolation_poly',
-    'x2y2_interpolation_near',
+    'interpolation_poly',
+    'interpolation_near',
     'get_n',
 
     'find_key_points',

@@ -145,8 +145,8 @@ def interpolation_poly(x1, y1, x2, y2, x1grd, y1grd, order=1, **kwargs):
         A += [x1**3, y1**3, x1**2*y1, y1**2*x1]
 
     A = np.vstack(A).T
-    Bx = np.linalg.lstsq(A, x2, rcond=None)[0]
-    By = np.linalg.lstsq(A, y2, rcond=None)[0]
+    Bx = np.linalg.lstsq(A, x2, rcond=-1)[0]
+    By = np.linalg.lstsq(A, y2, rcond=-1)[0]
     x1grdF = x1grd.flatten()
     y1grdF = y1grd.flatten()
 
@@ -209,7 +209,8 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
     else:
         # open data with Nansat and downsample
         n = Nansat(filename)
-        n.resize(factor, resample_alg=-1)
+        if factor != 1:
+            n.resize(factor, resample_alg=-1)
     # get matrix with data
     img = n[bandName]
     # convert to dB
@@ -221,8 +222,9 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
     nout = Nansat.from_domain(n, img, parameters={'name': bandName})
     nout.set_metadata(n.get_metadata())
     # improve geolocation accuracy
-    nout.reproject_gcps()
-    nout.vrt.tps = True
+    if len(nout.vrt.dataset.GetGCPs()) > 0:
+        nout.reproject_gcps()
+        nout.vrt.tps = True
     return nout
 
 def get_drift_vectors(n1, x1, y1, n2, x2, y2, nsr=NSR(), **kwargs):
