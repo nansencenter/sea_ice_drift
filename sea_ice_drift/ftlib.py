@@ -42,7 +42,7 @@ def find_key_points(image,
         keyPoints : list - coordinates of keypoint on image
         descriptors : list - binary descriptos of kepoints
     '''
-    if cv2.__version__.startswith('3.'):
+    if cv2.__version__.startswith('3.') or cv2.__version__.startswith('4.'):
         detector = cv2.ORB_create()
         detector.setEdgeThreshold(edgeThreshold)
         detector.setMaxFeatures(nFeatures)
