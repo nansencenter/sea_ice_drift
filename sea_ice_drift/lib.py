@@ -34,9 +34,10 @@ def get_uint8_image(image, vmin, vmax):
     -------
         2D matrix
     '''
-    # redistribute into range [0,255]
-    uint8Image = 255 * (image - vmin) / (vmax - vmin)
-    uint8Image[uint8Image < 0] = 0
+    # redistribute into range [1,255]
+    # 0 is reserved for invalid pixels
+    uint8Image = 1 + 254 * (image - vmin) / (vmax - vmin)
+    uint8Image[uint8Image < 1] = 1
     uint8Image[uint8Image > 255] = 255
     uint8Image[~np.isfinite(uint8Image)] = 0
 

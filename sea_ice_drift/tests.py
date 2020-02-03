@@ -79,7 +79,7 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
                     imageUint8, vmin=0, vmax=255)
 
         self.assertEqual(imageUint8.dtype, np.uint8)
-        self.assertEqual(imageUint8.min(), 0)
+        self.assertEqual(imageUint8.min(), 1)
         self.assertEqual(imageUint8.max(), 255)
 
     def test_get_displacement_km(self):
@@ -118,7 +118,7 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
 
         self.assertIsInstance(n, Nansat)
         self.assertEqual(n[1].dtype, np.uint8)
-        self.assertEqual(n[1].min(), 0)
+        self.assertEqual(n[1].min(), 1)
         self.assertEqual(n[1].max(), 255)
 
     def test_interpolation_poly(self):

@@ -1,7 +1,4 @@
 language: python
-python:
-  - "2.7"
-  - "3.6"
 
 before_install:
   - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O $HOME/miniconda.sh
@@ -13,7 +10,7 @@ before_install:
   - export ICE_DRIFT_TEST_DATA_DIR=./
 
 install:
-  - conda create -q --yes -n test-environment -c conda-forge python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib netcdf4 gdal=2.4.2 opencv nose coverage
+  - conda create -q --yes -n test-environment -c conda-forge numpy scipy matplotlib netcdf4 gdal=2.4.2 opencv nose coverage
   - source activate test-environment
   - python setup.py install
 
