@@ -111,7 +111,7 @@ def get_template(img, c, r, a, s, rot_order=0, **kwargs):
 
     t = nd.interpolation.affine_transform(
         img, transform.T, order=rot_order, offset=offset, output_shape=(s, s), cval=0.0, output=np.uint8)
-
+   
     return t
 
 def rotate_and_match(img1, c1, r1, img_size, image2, alpha0,
@@ -141,16 +141,15 @@ def rotate_and_match(img1, c1, r1, img_size, image2, alpha0,
         best_a : float - angle of MCC
         best_r : float - MCC
         best_h : float - Hessian at highest MCC point
-        best_result : 2D array - CC
-        best_template : 2D array - template rotated to the best angle
     '''
 
+    res_shape = [image2.shape[0] - img_size +1]*2
     best_r = -np.inf
     for angle in angles:
         template = get_template(img1, c1, r1, angle-alpha0, img_size, **kwargs)
-
-        if template.shape[0] < img_size or template.shape[1] < img_size:
-            return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
+        if ((template.min() == 0) or
+            (template.shape[0] < img_size or template.shape[1] < img_size)):
+            return np.nan, np.nan, np.nan, np.nan, np.nan
 
         result = template_matcher(image2, template, mtype)
 
@@ -169,8 +168,8 @@ def rotate_and_match(img1, c1, r1, img_size, image2, alpha0,
 
     if mcc_norm:
         best_r = (best_r - np.median(best_result)) / np.std(best_result)
-
-    return dc, dr, best_a, best_r, best_h, best_result, best_template
+    
+    return dc, dr, best_a, best_r, best_h
 
 def use_mcc(c1, r1, c2fg, r2fg, border, img1, img2, img_size, alpha0, **kwargs):
     """ Apply MCC algorithm for one point
@@ -200,11 +199,11 @@ def use_mcc(c1, r1, c2fg, r2fg, border, img1, img2, img_size, alpha0, **kwargs):
     image = img2[int(r2fg-hws-border):int(r2fg+hws+border+1),
                  int(c2fg-hws-border):int(c2fg+hws+border+1)]
 
-    dc, dr, best_a, best_r, best_h, best_result, best_template = rotate_and_match(img1, c1, r1,
-                                                                                  img_size,
-                                                                                  image,
-                                                                                  alpha0,
-                                                                                  **kwargs)
+    dc, dr, best_a, best_r, best_h = rotate_and_match(img1, c1, r1,
+                                                      img_size,
+                                                      image,
+                                                      alpha0,
+                                                      **kwargs)
     c2 = c2fg + dc
     r2 = r2fg + dr
 
@@ -432,7 +431,7 @@ def pattern_matching(lon_pm1, lat_pm1,
         shared_args = args[:9]
         shared_kwargs = args[9]
 
-    if threads == 0:
+    if threads <= 1:
         # run MCC without threads
         _init_pool(c1pm1i[gpi], r1pm1i[gpi], c2fg[gpi], r2fg[gpi], brd2[gpi], img1, img2, img_size, alpha0, kwargs)
         results = [use_mcc_mp(i) for i in range(len(gpi[gpi]))]
@@ -455,6 +454,8 @@ def pattern_matching(lon_pm1, lat_pm1,
         a = np.zeros(dst_shape) + np.nan
         r = np.zeros(dst_shape) + np.nan
         h = np.zeros(dst_shape) + np.nan
+        lon_pm2_grd = np.zeros(dst_shape) + np.nan
+        lat_pm2_grd = np.zeros(dst_shape) + np.nan
     else:
         results = np.array(results)
 

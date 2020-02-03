@@ -16,6 +16,7 @@ from __future__ import absolute_import, print_function
 import matplotlib.pyplot as plt
 
 import numpy as np
+from scipy.ndimage import zoom, maximum_filter
 from scipy.interpolate import griddata
 import gdal
 
@@ -34,12 +35,14 @@ def get_uint8_image(image, vmin, vmax):
     -------
         2D matrix
     '''
+    if vmin is None or vmax is None:
+        vmin, vmax = np.nanpercentile(image, [10, 99.9])
     # redistribute into range [1,255]
     # 0 is reserved for invalid pixels
     uint8Image = 1 + 254 * (image - vmin) / (vmax - vmin)
     uint8Image[uint8Image < 1] = 1
     uint8Image[uint8Image > 255] = 255
-    uint8Image[~np.isfinite(uint8Image)] = 0
+    uint8Image[~np.isfinite(image)] = 0
 
     return uint8Image.astype('uint8')
 
@@ -185,24 +188,40 @@ def interpolation_near(x1, y1, x2, y2, x1grd, y1grd, method='linear', **kwargs):
 
     return x2grd, y2grd
 
-def get_n(filename, bandName='sigma0_HV', factor=0.5,
-                        vmin=-30, vmax=-5, denoise=False, dB=True,
-                        **kwargs):
-    ''' Get Nansat object with image data scaled to UInt8
+def get_n(filename, bandName='sigma0_HV',
+                    factor=0.5,
+                    vmin=-30,
+                    vmax=-5,
+                    denoise=False,
+                    dB=True,
+                    add_landmask=True,
+                    **kwargs):
+    """ Get Nansat object with image data scaled to UInt8
     Parameters
     ----------
-        filename : str - input file name
-        bandName : str - name of band in the file
-        factor : float - subsampling factor
-        vmin : float - minimum allowed value in the band
-        vmax : float - maximum allowed value in the band
-        denoise : bool - apply denoising of sigma0 ?
-        dB : bool - apply conversion to dB ?
-        **kwargs : parameters for get_denoised_object()
+    filename : str
+        input file name
+    bandName : str
+        name of band in the file
+    factor : float
+        subsampling factor
+    vmin : float
+        minimum allowed value in the band
+    vmax : float
+        maximum allowed value in the band
+    denoise : bool
+        apply denoising of sigma0 ?
+    dB : bool
+        apply conversion to dB ?
+    add_landmask : bool
+        mask land with 0 ?
+    **kwargs : parameters for get_denoised_object() and mask_land()
+
     Returns
     -------
         n : Nansat object with one band scaled to UInt8
-    '''
+
+    """
     if denoise:
         # run denoising
         n = get_denoised_object(filename, bandName, factor, **kwargs)
@@ -216,8 +235,13 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
     # convert to dB
     if not denoise and dB:
         img = 10 * np.log10(img)
-    # convert to 0 - 255
+
+    if add_landmask:
+        img = mask_land(img, n, **kwargs)
+
+    # convert to 1 - 255
     img = get_uint8_image(img, vmin, vmax)
+
 
     nout = Nansat.from_domain(n, img, parameters={'name': bandName})
     nout.set_metadata(n.get_metadata())
@@ -225,7 +249,43 @@ def get_n(filename, bandName='sigma0_HV', factor=0.5,
     if len(nout.vrt.dataset.GetGCPs()) > 0:
         nout.reproject_gcps()
         nout.vrt.tps = True
+
     return nout
+
+def mask_land(img, n, landmask_border=20, **kwargs):
+    """
+    Replace land and cosatal pixels input image with np.nan
+
+    Parameters
+    ----------
+    img : float ndarray
+        input image
+    n : Nansat
+        input Nansat object
+    landmask_border : int
+        border around landmask
+    **kwargs : dict
+        dummy params
+
+    Returns
+    -------
+    img : float ndarray
+        image with zero in land pixels
+    """
+    n.resize(1./landmask_border)
+    try:
+        wm = n.watermask()[1]
+    except:
+        print('Cannot add landmask')
+        return img
+    else:
+        n.undo()
+        wm[wm > 2] = 2
+        wmf = maximum_filter(wm, 3)
+        wmz = zoom(wmf, (np.array(n.shape()) / np.array(wm.shape)))
+        img[wmz == 2] = np.nan
+        img[np.isinf(img)] = np.nan
+        return img
 
 def get_drift_vectors(n1, x1, y1, n2, x2, y2, nsr=NSR(), **kwargs):
     ''' Find ice drift speed m/s
