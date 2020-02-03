@@ -19,6 +19,7 @@ import sys
 import glob
 import unittest
 import inspect
+from mock import MagicMock
 
 import gdal
 import numpy as np
@@ -35,7 +36,8 @@ from sea_ice_drift.lib import (get_uint8_image,
                                interpolation_near,
                                get_n,
                                get_drift_vectors,
-                               _fill_gpi)
+                               _fill_gpi,
+                              mask_land)
 
 from sea_ice_drift.ftlib import (find_key_points,
                                  get_match_coords,
@@ -118,8 +120,35 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
 
         self.assertIsInstance(n, Nansat)
         self.assertEqual(n[1].dtype, np.uint8)
-        self.assertEqual(n[1].min(), 1)
+        self.assertEqual(n[1].min(), 0)
         self.assertEqual(n[1].max(), 255)
+
+    def test_mask_land_all_valid(self):
+        ''' Shall return Nansat and Matrix '''
+        n = Nansat(self.testFiles[0])
+        img = n[1]
+        mask = np.zeros((np.array(img.shape)/20).astype(int))
+        n.watermask = MagicMock(return_value=[None, mask])
+        img2 = mask_land(img, n)
+        self.assertEqual(np.where(np.isnan(img2))[0].size, 0)
+
+    def test_mask_land_some_valid(self):
+        ''' Shall return Nansat and Matrix '''
+        n = Nansat(self.testFiles[0])
+        img = n[1]
+        mask = np.zeros((np.array(img.shape)/20).astype(int))
+        mask[:10,:] = 2
+        n.watermask = MagicMock(return_value=[None, mask])
+        img2 = mask_land(img, n)
+        self.assertGreater(np.where(np.isnan(img2))[0].size, 0)
+
+    def test_mask_land_with_error(self):
+        ''' Shall return Nansat and Matrix '''
+        n = Nansat(self.testFiles[0])
+        n.watermask = MagicMock(return_value=None, side_effect=KeyError('foo'))
+        img = n[1]
+        img2 = mask_land(img, n)
+        self.assertTrue(np.all(img==img2))
 
     def test_interpolation_poly(self):
         keyPoints1, descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
@@ -220,12 +249,12 @@ class SeaIceDriftFTLibTests(SeaIceDriftTestBase):
         '''Shall keep only slow drift '''
         x1, y1, x2, y2 = get_match_coords(self.keyPoints1, self.descr1,
                                           self.keyPoints2, self.descr2,
-                                          ratio_test=0.8)
+                                          ratio_test=0.7)
         x1f, y1f, x2f, y2f = max_drift_filter(self.n1, x1, y1,
                                           self.n2, x2, y2,
-                                          max_speed=0.3)
-        self.assertTrue(len(x1f) > 0)
-        self.assertTrue(len(x1f) < len(x1))
+                                          max_speed=0.001)
+        self.assertGreater(len(x1f), 0)
+        self.assertGreater(len(x1), len(x1f))
 
         # remove time_coverage_start
         self.n1.vrt.dataset.SetMetadata({})
@@ -239,9 +268,9 @@ class SeaIceDriftFTLibTests(SeaIceDriftTestBase):
 
         x1f, y1f, x2f, y2f = max_drift_filter(self.n1, x1, y1,
                                           self.n2, x2, y2,
-                                          max_drift=1000)
-        self.assertTrue(len(x1f) > 0)
-        self.assertTrue(len(x1f) < len(x1))
+                                          max_drift=100)
+        self.assertGreater(len(x1f), 0)
+        self.assertGreater(len(x1), len(x1f))
 
     def test_lstsq_filter(self):
         ''' Shall filter out not matching points '''
@@ -287,8 +316,8 @@ class SeaIceDriftPMLibTests(SeaIceDriftTestBase):
         alpha21 = get_initial_rotation(self.n2, self.n1)
 
         self.assertIsInstance(alpha12, float)
-        self.assertAlmostEqual(alpha12, -alpha21, 1)
-        self.assertAlmostEqual(alpha12, 60.91682335, 1)
+        self.assertAlmostEqual(np.floor(alpha12), np.floor(-alpha21), 1)
+        self.assertAlmostEqual(alpha12, -3.85, 1)
 
     def test_rotate_and_match(self):
         ''' shall rotate and match'''
@@ -310,10 +339,11 @@ class SeaIceDriftPMLibTests(SeaIceDriftTestBase):
 class SeaIceDriftClassTests(SeaIceDriftTestBase):
     def test_integrated(self):
         ''' Shall use all developed functions for feature tracking'''
-        lon1pm, lat1pm = np.meshgrid(np.linspace(-3, 2, 50),
-                             np.linspace(86.4, 86.8, 50))
-
         sid = SeaIceDrift(self.testFiles[0], self.testFiles[1])
+
+        lon1b, lat1b = sid.n1.get_border()
+        lon1pm, lat1pm = np.meshgrid(np.linspace(lon1b.min(), lon1b.max(), 50),
+                             np.linspace(lat1b.min(), lat1b.max(), 50))
         uft, vft, lon1ft, lat1ft, lon2ft, lat2ft = sid.get_drift_FT()
         upm, vpm, apm, rpm, hpm, lon2pm, lat2pm = sid.get_drift_PM(
                                             lon1pm, lat1pm,
@@ -322,28 +352,29 @@ class SeaIceDriftClassTests(SeaIceDriftTestBase):
 
         lon1, lat1 = sid.n1.get_border()
         lon2, lat2 = sid.n2.get_border()
-        sid.n1.reproject(Domain(NSR().wkt, '-te -3 86.4 2 86.8 -ts 500 500'))
+        ext_str = '-te %s %s %s %s -ts 500 500' % (lon1b.min(), lat1b.min(), lon1b.max(), lat1b.max())
+        sid.n1.reproject(Domain(NSR().wkt, ext_str))
         s01 = sid.n1['sigma0_HV']
-        sid.n2.reproject(Domain(NSR().wkt, '-te -3 86.4 2 86.8 -ts 500 500'))
+        sid.n2.reproject(Domain(NSR().wkt, ext_str))
         s02 = sid.n2['sigma0_HV']
-
-        plt.imshow(s01, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
+        extent=[lon1b.min(), lon1b.max(), lat1b.min(), lat1b.max()]
+        plt.imshow(s01, extent=extent, cmap='gray', aspect=12)
         plt.quiver(lon1ft, lat1ft, uft, vft, color='r',
-                   angles='xy', scale_units='xy', scale=0.5)
+                   angles='xy', scale_units='xy', scale=0.2)
         plt.plot(lon2, lat2, '.-r')
-        plt.xlim([-3, 2])
-        plt.ylim([86.4, 86.8])
+        plt.xlim([lon1b.min(), lon1b.max()])
+        plt.ylim([lat1b.min(), lat1b.max()])
         plt.savefig('sea_ice_drift_tests_%s_img1_ft.png' % inspect.currentframe().f_code.co_name,
                     dpi=150, bbox_inches='tight', pad_inches=0)
         plt.close('all')
 
-        plt.imshow(s02, extent=[-3, 2, 86.4, 86.8], cmap='gray', aspect=12)
+        plt.imshow(s02, extent=extent, cmap='gray', aspect=12)
         gpi = rpm > 0.4
         plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi]*hpm[gpi],
-                   angles='xy', scale_units='xy', scale=0.5)
+                   angles='xy', scale_units='xy', scale=0.2)
         plt.plot(lon1, lat1, '.-r')
-        plt.xlim([-3, 2])
-        plt.ylim([86.4, 86.8])
+        plt.xlim([lon1b.min(), lon1b.max()])
+        plt.ylim([lat1b.min(), lat1b.max()])
         plt.savefig('sea_ice_drift_tests_%s_img2_pm.png' % inspect.currentframe().f_code.co_name,
                     dpi=150, bbox_inches='tight', pad_inches=0)
         plt.close('all')

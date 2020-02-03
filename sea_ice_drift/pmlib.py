@@ -141,6 +141,8 @@ def rotate_and_match(img1, c1, r1, img_size, image2, alpha0,
         best_a : float - angle of MCC
         best_r : float - MCC
         best_h : float - Hessian at highest MCC point
+        best_result : float ndarray - cross correlation matrix
+        best_template : uint8 ndarray - best rotated template
     '''
 
     res_shape = [image2.shape[0] - img_size +1]*2
@@ -149,7 +151,7 @@ def rotate_and_match(img1, c1, r1, img_size, image2, alpha0,
         template = get_template(img1, c1, r1, angle-alpha0, img_size, **kwargs)
         if ((template.min() == 0) or
             (template.shape[0] < img_size or template.shape[1] < img_size)):
-            return np.nan, np.nan, np.nan, np.nan, np.nan
+            return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
 
         result = template_matcher(image2, template, mtype)
 
@@ -169,7 +171,7 @@ def rotate_and_match(img1, c1, r1, img_size, image2, alpha0,
     if mcc_norm:
         best_r = (best_r - np.median(best_result)) / np.std(best_result)
     
-    return dc, dr, best_a, best_r, best_h
+    return dc, dr, best_a, best_r, best_h, best_result, best_template
 
 def use_mcc(c1, r1, c2fg, r2fg, border, img1, img2, img_size, alpha0, **kwargs):
     """ Apply MCC algorithm for one point
@@ -199,7 +201,7 @@ def use_mcc(c1, r1, c2fg, r2fg, border, img1, img2, img_size, alpha0, **kwargs):
     image = img2[int(r2fg-hws-border):int(r2fg+hws+border+1),
                  int(c2fg-hws-border):int(c2fg+hws+border+1)]
 
-    dc, dr, best_a, best_r, best_h = rotate_and_match(img1, c1, r1,
+    dc, dr, best_a, best_r, best_h, best_result, best_template = rotate_and_match(img1, c1, r1,
                                                       img_size,
                                                       image,
                                                       alpha0,
