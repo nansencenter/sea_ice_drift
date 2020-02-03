@@ -33,10 +33,10 @@ from sea_ice_drift import SeaIceDrift
 # ==== ICE DRIFT RETRIEVAL ====
 
 # define border for region of interest
-lone = -31
-lonw = -28
+lone = -33.5
+lonw = -30.5
 lats = 83.6
-latn = 84
+latn = 83.9
 
 # open files, read 'sigma0_HV' band and convert to UInt8 image
 f1 = 'S1B_EW_GRDM_1SDH_20200123T120618.tif'
@@ -74,7 +74,7 @@ s02 = sid.n2['sigma0_HV']
 plt.imshow(s01, extent=[lone, lonw, lats, latn], cmap='gray', aspect=10)
 # plot vectors of sea ice drift from Feature Tracking
 plt.quiver(lon1ft, lat1ft, uft, vft, color='r',
-           angles='xy', scale_units='xy', scale=1)
+           angles='xy', scale_units='xy', scale=0.2)
 # plot border of the second SAR scene
 plt.plot(lon2, lat2, '.-r')
 # set X/Y limits of figure
@@ -86,10 +86,10 @@ plt.close('all')
 # plot the projected image from the second SAR scene
 plt.imshow(s02, extent=[lone, lonw, lats, latn], cmap='gray', aspect=10)
 # filter only high quality pixels
-gpi = rpm > 0.4
+gpi = rpm*hpm > 4
 # plot vectors of sea ice drift from Feature Tracking, color by MCC
 plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi],
-           angles='xy', scale_units='xy', scale=1)
+           angles='xy', scale_units='xy', scale=0.2)
 # plot border of the first SAR scene
 plt.plot(lon1, lat1, '.-r')
 # set X/Y limits of figure
