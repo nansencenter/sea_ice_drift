@@ -37,7 +37,7 @@ from sea_ice_drift.lib import (get_uint8_image,
                                get_n,
                                get_drift_vectors,
                                _fill_gpi,
-                              mask_land)
+                              get_invalid_mask)
 
 from sea_ice_drift.ftlib import (find_key_points,
                                  get_match_coords,
@@ -111,12 +111,11 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
         plt.close('all')
         self.assertEqual(len(u), len(x1))
 
-    @patch('sea_ice_drift.lib.mask_land')
-    def test_get_n(self, mock_mask_land):
-        ''' Shall return Nansat and Matrix '''
-        img = np.random.uniform(0,0.01,size=(500,500))
-        img[:100] = np.nan
-        mock_mask_land.return_value = img
+    @patch('sea_ice_drift.lib.get_invalid_mask')
+    def test_get_n(self, mock_get_invalid_mask):
+        invalid_mask =  np.zeros((500,500)).astype(bool)
+        invalid_mask[:100,:100] = True
+        mock_get_invalid_mask.return_value = invalid_mask
         n = get_n(self.testFiles[0],
                            'sigma0_HV', 0.5, 0.001, 0.013, False, False)
         n = get_n(self.testFiles[0],
@@ -127,32 +126,29 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
         self.assertEqual(n[1].min(), 0)
         self.assertEqual(n[1].max(), 255)
 
-    def test_mask_land_all_valid(self):
-        ''' Shall return Nansat and Matrix '''
+    def test_get_invalid_mask_all_valid(self):
         n = Nansat(self.testFiles[0])
         img = n[1]
         mask = np.zeros((np.array(img.shape)/20).astype(int))
         n.watermask = MagicMock(return_value=[None, mask])
-        img2 = mask_land(img, n)
-        self.assertEqual(np.where(np.isnan(img2))[0].size, 0)
+        mask = get_invalid_mask(img, n)
+        self.assertEqual(np.where(mask)[0].size, 0)
 
-    def test_mask_land_some_valid(self):
-        ''' Shall return Nansat and Matrix '''
+    def test_get_invalid_mask_some_valid(self):
         n = Nansat(self.testFiles[0])
         img = n[1]
         mask = np.zeros((np.array(img.shape)/20).astype(int))
         mask[:10,:] = 2
         n.watermask = MagicMock(return_value=[None, mask])
-        img2 = mask_land(img, n)
-        self.assertGreater(np.where(np.isnan(img2))[0].size, 0)
+        mask = get_invalid_mask(img, n)
+        self.assertGreater(np.where(mask)[0].size, 0)
 
-    def test_mask_land_with_error(self):
-        ''' Shall return Nansat and Matrix '''
+    def test_get_invalid_mask_with_error(self):
         n = Nansat(self.testFiles[0])
         n.watermask = MagicMock(return_value=None, side_effect=KeyError('foo'))
         img = n[1]
-        img2 = mask_land(img, n)
-        self.assertTrue(np.all(img==img2))
+        mask = get_invalid_mask(img, n)
+        self.assertFalse(np.any(mask))
 
     def test_interpolation_poly(self):
         keyPoints1, descr1 = find_key_points(self.img1, nFeatures=self.nFeatures)
@@ -341,8 +337,14 @@ class SeaIceDriftPMLibTests(SeaIceDriftTestBase):
 
 
 class SeaIceDriftClassTests(SeaIceDriftTestBase):
-    def test_integrated(self):
+    @patch('sea_ice_drift.lib.get_invalid_mask')
+    def test_integrated(self, mock_get_invalid_mask):
         ''' Shall use all developed functions for feature tracking'''
+
+        invalid_mask =  np.zeros((500,500)).astype(bool)
+        invalid_mask[:100,:100] = True
+        mock_get_invalid_mask.return_value = invalid_mask
+
         sid = SeaIceDrift(self.testFiles[0], self.testFiles[1])
 
         lon1b, lat1b = sid.n1.get_border()
@@ -362,7 +364,7 @@ class SeaIceDriftClassTests(SeaIceDriftTestBase):
         sid.n2.reproject(Domain(NSR().wkt, ext_str))
         s02 = sid.n2['sigma0_HV']
         extent=[lon1b.min(), lon1b.max(), lat1b.min(), lat1b.max()]
-        plt.imshow(s01, extent=extent, cmap='gray', aspect=12)
+        plt.imshow(s01, extent=extent, cmap='gray', aspect=10)
         plt.quiver(lon1ft, lat1ft, uft, vft, color='r',
                    angles='xy', scale_units='xy', scale=0.2)
         plt.plot(lon2, lat2, '.-r')
@@ -372,8 +374,8 @@ class SeaIceDriftClassTests(SeaIceDriftTestBase):
                     dpi=150, bbox_inches='tight', pad_inches=0)
         plt.close('all')
 
-        plt.imshow(s02, extent=extent, cmap='gray', aspect=12)
-        gpi = rpm > 0.4
+        plt.imshow(s02, extent=extent, cmap='gray', aspect=10)
+        gpi = hpm*rpm > 4
         plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi]*hpm[gpi],
                    angles='xy', scale_units='xy', scale=0.2)
         plt.plot(lon1, lat1, '.-r')

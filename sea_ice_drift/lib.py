@@ -194,7 +194,7 @@ def get_n(filename, bandName='sigma0_HV',
                     vmax=-5,
                     denoise=False,
                     dB=True,
-                    add_landmask=True,
+                    mask_invalid=True,
                     **kwargs):
     """ Get Nansat object with image data scaled to UInt8
     Parameters
@@ -213,9 +213,9 @@ def get_n(filename, bandName='sigma0_HV',
         apply denoising of sigma0 ?
     dB : bool
         apply conversion to dB ?
-    add_landmask : bool
-        mask land with 0 ?
-    **kwargs : parameters for get_denoised_object() and mask_land()
+    mask_invalid : bool
+        mask invalid pixels (land, inf, etc) with 0 ?
+    **kwargs : parameters for get_denoised_object() and get_invalid_mask()
 
     Returns
     -------
@@ -235,14 +235,12 @@ def get_n(filename, bandName='sigma0_HV',
     # convert to dB
     if not denoise and dB:
         img = 10 * np.log10(img)
-
-    if add_landmask:
-        img = mask_land(img, n, **kwargs)
-
-    # convert to 1 - 255
+    if mask_invalid:
+        mask = get_invalid_mask(img, n, **kwargs)
+        img[mask] = np.nan
+    # convert to 0 - 255
     img = get_uint8_image(img, vmin, vmax)
-
-
+    # create Nansat with one band only
     nout = Nansat.from_domain(n, img, parameters={'name': bandName})
     nout.set_metadata(n.get_metadata())
     # improve geolocation accuracy
@@ -252,9 +250,9 @@ def get_n(filename, bandName='sigma0_HV',
 
     return nout
 
-def mask_land(img, n, landmask_border=20, **kwargs):
+def get_invalid_mask(img, n, landmask_border=20, **kwargs):
     """
-    Replace land and cosatal pixels input image with np.nan
+    Create mask of invalid pixels (land, cosatal, inf)
 
     Parameters
     ----------
@@ -269,23 +267,23 @@ def mask_land(img, n, landmask_border=20, **kwargs):
 
     Returns
     -------
-    img : float ndarray
-        image with zero in land pixels
+    mask : bool
+        True where pixels are invalid
     """
+    mask = np.isnan(img) + np.isinf(img)
     n.resize(1./landmask_border)
     try:
         wm = n.watermask()[1]
     except:
         print('Cannot add landmask')
-        return img
     else:
         n.undo()
         wm[wm > 2] = 2
         wmf = maximum_filter(wm, 3)
         wmz = zoom(wmf, (np.array(n.shape()) / np.array(wm.shape)))
-        img[wmz == 2] = np.nan
-        img[np.isinf(img)] = np.nan
-        return img
+        mask[wmz == 2] = True
+
+    return mask
 
 def get_drift_vectors(n1, x1, y1, n2, x2, y2, nsr=NSR(), **kwargs):
     ''' Find ice drift speed m/s
