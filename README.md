@@ -33,10 +33,10 @@ pip install https://github.com/nansencenter/sea_ice_drift/archive/v0.7.tar.gz
 ## Installation with docker
 ```
 # run ipython with Nansat and SeaIceDrift installed
-docker run --rm -it -v /path/to/data:/src akorosov/seaicedrift ipython
+docker run --rm -it -v /path/to/data:/src nansencenter/seaicedrift ipython
 
 # run jupyter notebook with Nansat and SeaIceDrift installed
-docker run --rm -it -p 8888:8888 -v /path/to/data/and/notebooks:/src akorosov/seaicedrift
+docker run --rm -it -p 8888:8888 -v /path/to/data/and/notebooks:/src nansencenter/seaicedrift
 ```
 
 
