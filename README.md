@@ -18,7 +18,7 @@ regular grid.
  * [Nansat](https://github.com/nansencenter/nansat) - scientist friendly open-source Python toolbox for processing 2D satellite earth observation data)
  * [OpenCV](http://opencv.org) - open-source computer vision
 
-## Installation
+## Installation with conda
 ```
 # Install Python, OpenCV and other requirements using miniconda (http://conda.pydata.org/miniconda.html):
 conda create -q --yes -n py3drift -c conda-forge python=3.6 numpy scipy matplotlib netcdf4 gdal opencv nose
@@ -30,20 +30,31 @@ source activate py3drift
 pip install https://github.com/nansencenter/sea_ice_drift/archive/v0.7.tar.gz
 ```
 
+## Installation with docker
+```
+# run ipython with Nansat and SeaIceDrift installed
+docker run --rm -it -v /path/to/data:/src akorosov/seaicedrift ipython
+
+# run jupyter notebook with Nansat and SeaIceDrift installed
+docker run --rm -it -p 8888:8888 -v /path/to/data/and/notebooks:/src akorosov/seaicedrift
+```
+
+
 ## Example
 ```
 # download example datasets
-wget https://github.com/nansencenter/sea_ice_drift_test_files/raw/master/S1A_EW_GRDM_1SDH_20161005T142446.tif
-wget https://github.com/nansencenter/sea_ice_drift_test_files/raw/master/S1B_EW_GRDM_1SDH_20161005T101835.tif
+wget https://github.com/nansencenter/sea_ice_drift_test_files/raw/master/S1B_EW_GRDM_1SDH_20200123T120618.tif
+wget https://github.com/nansencenter/sea_ice_drift_test_files/raw/master/S1B_EW_GRDM_1SDH_20200125T114955.tif
 
 # start Python and import relevant libraries
+import numpy as np
 import matplotlib.pyplot as plt
 from nansat import Nansat
 from sea_ice_drift import SeaIceDrift
 
 # open pair of satellite images using Nansat and SeaIceDrift
-filename1='S1B_EW_GRDM_1SDH_20161005T101835_20161005T101935_002370_004016_FBF1'
-filename2='S1A_EW_GRDM_1SDH_20161005T142446_20161005T142546_013356_0154D8_C3EC'
+filename1='S1B_EW_GRDM_1SDH_20200123T120618.tif'
+filename2='S1B_EW_GRDM_1SDH_20200125T114955.tif'
 sid = SeaIceDrift(filename1, filename2)
 
 # run ice drift retrieval using Feature Tracking
@@ -53,17 +64,17 @@ uft, vft, lon1ft, lat1ft, lon2ft, lat2ft = sid.get_drift_FT()
 plt.quiver(lon1ft, lat1ft, uft, vft);plt.show()
 
 # define a grid (e.g. regular)
-lon1pm, lat1pm = np.meshgrid(np.linspace(-3, 2, 50),
-                             np.linspace(86.4, 86.8, 50))
+lon1pm, lat1pm = np.meshgrid(np.linspace(-33.5, -30.5, 50),
+                             np.linspace(83.6, 83.9, 50))
 
 # run ice drift retrieval for regular points using Pattern Matching
 # use results from the Feature Tracking as the first guess
-upm, vpm, rpm, apm, lon2pm, lat2pm = sid.get_drift_PM(
-                                    lon1pm, lat1pm,
-                                    lon1ft, lat1ft,
-                                    lon2ft, lat2ft)
+upm, vpm, apm, rpm, hpm, lon2pm, lat2pm = sid.get_drift_PM(
+        lon1pm, lat1pm,
+        lon1ft, lat1ft,
+        lon2ft, lat2ft)
 # select high quality data only
-gpi = rpm > 0.4
+gpi = rpm*hpm > 4
 
 # plot high quality data on a regular grid
 plt.quiver(lon1pm[gpi], lat1pm[gpi], upm[gpi], vpm[gpi], rpm[gpi])
