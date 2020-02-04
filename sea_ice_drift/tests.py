@@ -324,7 +324,7 @@ class SeaIceDriftPMLibTests(SeaIceDriftTestBase):
         n1 = get_n(self.testFiles[0])
         n2 = get_n(self.testFiles[1])
         dx, dy, best_a, best_r, best_h, best_result, best_template = rotate_and_match(
-                         n1[1], 300, 100, 50, n2[1], 60, [-2,-1,0,1,2])
+                         n1[1], 300, 100, 50, n2[1], 0, [-3,-2,-1,0,1,2,3])
         plt.subplot(1,3,1)
         plt.imshow(n2[1], interpolation='nearest')
         plt.subplot(1,3,2)
