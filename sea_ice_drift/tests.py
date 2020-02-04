@@ -19,7 +19,7 @@ import sys
 import glob
 import unittest
 import inspect
-from mock import MagicMock
+from mock import MagicMock, patch
 
 import gdal
 import numpy as np
@@ -111,8 +111,12 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
         plt.close('all')
         self.assertEqual(len(u), len(x1))
 
-    def test_get_n(self):
+    @patch('sea_ice_drift.lib.mask_land')
+    def test_get_n(self, mock_mask_land):
         ''' Shall return Nansat and Matrix '''
+        img = np.random.uniform(0,0.01,size=(500,500))
+        img[:100] = np.nan
+        mock_mask_land.return_value = img
         n = get_n(self.testFiles[0],
                            'sigma0_HV', 0.5, 0.001, 0.013, False, False)
         n = get_n(self.testFiles[0],
