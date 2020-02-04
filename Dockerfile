@@ -1,4 +1,4 @@
-FROM akorosov/nansat-lectures
+FROM nansencenter/nansat-lectures
 
 RUN apt-get update \
 &&  apt-get install -y --no-install-recommends libgl1-mesa-glx \
@@ -9,5 +9,6 @@ RUN apt-get update \
 COPY *.py /tmp/
 COPY sea_ice_drift /tmp/sea_ice_drift
 WORKDIR /tmp
-RUN python setup.py install
+RUN python setup.py install \
+&&  rm -r /tmp/*.py /tmp/sea_ice_drift
 WORKDIR /src
