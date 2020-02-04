@@ -111,7 +111,7 @@ def get_template(img, c, r, a, s, rot_order=0, **kwargs):
 
     t = nd.interpolation.affine_transform(
         img, transform.T, order=rot_order, offset=offset, output_shape=(s, s), cval=0.0, output=np.uint8)
-   
+
     return t
 
 def rotate_and_match(img1, c1, r1, img_size, image2, alpha0,
@@ -143,8 +143,8 @@ def rotate_and_match(img1, c1, r1, img_size, image2, alpha0,
         best_h : float - Hessian at highest MCC point
         best_result : float ndarray - cross correlation matrix
         best_template : uint8 ndarray - best rotated template
-    '''
 
+    '''
     res_shape = [image2.shape[0] - img_size +1]*2
     best_r = -np.inf
     for angle in angles:
@@ -170,7 +170,7 @@ def rotate_and_match(img1, c1, r1, img_size, image2, alpha0,
 
     if mcc_norm:
         best_r = (best_r - np.median(best_result)) / np.std(best_result)
-    
+
     return dc, dr, best_a, best_r, best_h, best_result, best_template
 
 def use_mcc(c1, r1, c2fg, r2fg, border, img1, img2, img_size, alpha0, **kwargs):

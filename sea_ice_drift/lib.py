@@ -277,12 +277,12 @@ def get_invalid_mask(img, n, landmask_border=20, **kwargs):
     except:
         print('Cannot add landmask')
     else:
-        n.undo()
         wm[wm > 2] = 2
         wmf = maximum_filter(wm, 3)
-        wmz = zoom(wmf, (np.array(n.shape()) / np.array(wm.shape)))
+        wmz = zoom(wmf, (np.array(img.shape) / np.array(wm.shape)))
         mask[wmz == 2] = True
 
+    n.undo()
     return mask
 
 def get_drift_vectors(n1, x1, y1, n2, x2, y2, nsr=NSR(), **kwargs):
