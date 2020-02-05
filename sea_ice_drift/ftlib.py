@@ -260,10 +260,10 @@ def feature_tracking(n1, n2, **kwargs):
 
     # filter keypoints by Domain
     kp1, descr1 = domain_filter(n1, kp1, descr1, n2, **kwargs)
-    if len(kp1) == 0:
+    if len(kp1) < 2:
         return (np.array([]),)*4
     kp2, descr2 = domain_filter(n2, kp2, descr2, n1, **kwargs)
-    if len(kp2) == 0:
+    if len(kp2) < 2:
         return (np.array([]),)*4
 
     # find coordinates of matching key points
