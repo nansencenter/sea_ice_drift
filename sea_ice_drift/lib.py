@@ -24,19 +24,31 @@ from nansat import Nansat, Domain, NSR
 
 AVG_EARTH_RADIUS = 6371  # in km
 
-def get_uint8_image(image, vmin, vmax):
+def get_uint8_image(image, vmin, vmax, pmin, pmax):
     ''' Scale image from float (or any) input array to uint8
     Parameters
     ----------
-        image : 2D matrix
-        vmin : float - minimum value
-        vmax : float - maximum value
+    image : 2D ndarray
+        matrix with sigma0 image
+    vmin : float or None
+        minimum value to convert to 1
+    vmax : float or None
+        maximum value to convert to 255
+    pmin : float
+        lower percentile for data scaling if vmin is None
+    pmax : float
+        upper percentile for data scaling if vmax is None
+
     Returns
     -------
         2D matrix
     '''
-    if vmin is None or vmax is None:
-        vmin, vmax = np.nanpercentile(image, [10, 99.9])
+    if vmin is None:
+        vmin = np.nanpercentile(image, pmin)
+        print('VMIN: ', vmin)
+    if vmax is None:
+        vmax = np.nanpercentile(image, pmax)
+        print('VMAX: ', vmax)
     # redistribute into range [1,255]
     # 0 is reserved for invalid pixels
     uint8Image = 1 + 254 * (image - vmin) / (vmax - vmin)
@@ -188,13 +200,72 @@ def interpolation_near(x1, y1, x2, y2, x1grd, y1grd, method='linear', **kwargs):
 
     return x2grd, y2grd
 
+def hh_angular_correction(n, img, bandName, correct_hh_factor):
+    """ Correct sigma0_HH for incidence angle dependence
+
+    Paramaters
+    ----------
+    correct_hh_factor : float
+        coefficient in the correction factor sigma0_HH_cor = sigma0_HH + correct_hh_factor * incidence_angle
+
+    Returns
+    -------
+    img : ndarray
+        corrected sigma0_HH in dB
+
+    """
+    if bandName == 'sigma0_HH' and n.has_band('incidence_angle'):
+        ia = n['incidence_angle']
+        imgcor = img - ia * correct_hh_factor
+    else:
+        imgcor = img
+
+    return imgcor
+
+def get_spatial_mean(img):
+    """ Approximate spatial mean brightness by second order polynomial
+
+    Paramaters
+    ----------
+    img : 2D ndimage
+        input image
+
+    Returns
+    -------
+    img2 : ndarray
+        approximated mean brightness
+
+    """
+    step =50
+    cols, rows = np.meshgrid(np.arange(0, img.shape[1]), np.arange(0, img.shape[0]))
+    imgsub, rowsub, colsub = [v[::step, ::step] for v in [img, rows, cols]]
+    gpi = np.isfinite(imgsub) * (imgsub > np.nanpercentile(imgsub, 5))
+    imgsub, rowsub, colsub = [v[gpi] for v in [imgsub, rowsub, colsub]]
+    def get_predictor(x, y):
+        return np.array([x, x**2, y, y**2, x*y, np.ones_like(x)]).T
+    A = get_predictor(colsub, rowsub)
+    x = np.linalg.lstsq(A, imgsub, rcond=None)
+    img2  = x[0][0] * cols
+    img2 += x[0][1] * cols**2
+    img2 += x[0][2] * rows
+    img2 += x[0][3] * rows**2
+    img2 += x[0][4] * cols*rows
+    img2 += x[0][5]
+    return img2
+
 def get_n(filename, bandName='sigma0_HV',
                     factor=0.5,
-                    vmin=-30,
-                    vmax=-5,
                     denoise=False,
                     dB=True,
                     mask_invalid=True,
+                    landmask_border=20,
+                    correct_hh=False,
+                    correct_hh_factor=-0.27,
+                    remove_spatial_mean=False,
+                    vmin=None,
+                    vmax=None,
+                    pmin=10,
+                    pmax=99,
                     **kwargs):
     """ Get Nansat object with image data scaled to UInt8
     Parameters
@@ -205,17 +276,30 @@ def get_n(filename, bandName='sigma0_HV',
         name of band in the file
     factor : float
         subsampling factor
-    vmin : float
-        minimum allowed value in the band
-    vmax : float
-        maximum allowed value in the band
     denoise : bool
         apply denoising of sigma0 ?
     dB : bool
         apply conversion to dB ?
     mask_invalid : bool
         mask invalid pixels (land, inf, etc) with 0 ?
-    **kwargs : parameters for get_denoised_object() and get_invalid_mask()
+    landmask_border : int
+        border around landmask
+    correct_hh : bool
+        perform angular correction of sigma0_HH ?
+    correct_hh_factor : float
+        coefficient in the correction factor sigma0_HH_cor = sigma0_HH + correct_hh_factor * incidence_angle
+    remove_spatial_mean : bool
+        remove spatial mean from image ?
+    vmin : float or None
+        minimum value to convert to 1
+    vmax : float or None
+        maximum value to convert to 255
+    pmin : float
+        lower percentile for data scaling if vmin is None
+    pmax : float
+        upper percentile for data scaling if vmax is None
+    **kwargs : dummy parameters for
+        get_denoised_object()
 
     Returns
     -------
@@ -234,12 +318,17 @@ def get_n(filename, bandName='sigma0_HV',
     img = n[bandName]
     # convert to dB
     if not denoise and dB:
+        img[img <= 0] = np.nan
         img = 10 * np.log10(img)
+    if correct_hh:
+        img = hh_angular_correction(n, img, bandName, correct_hh_factor)
     if mask_invalid:
-        mask = get_invalid_mask(img, n, **kwargs)
+        mask = get_invalid_mask(img, n, landmask_border)
         img[mask] = np.nan
+    if remove_spatial_mean:
+        img -= get_spatial_mean(img)
     # convert to 0 - 255
-    img = get_uint8_image(img, vmin, vmax)
+    img = get_uint8_image(img, vmin, vmax, pmin, pmax)
     # create Nansat with one band only
     nout = Nansat.from_domain(n, img, parameters={'name': bandName})
     nout.set_metadata(n.get_metadata())
@@ -250,7 +339,7 @@ def get_n(filename, bandName='sigma0_HV',
 
     return nout
 
-def get_invalid_mask(img, n, landmask_border=20, **kwargs):
+def get_invalid_mask(img, n, landmask_border):
     """
     Create mask of invalid pixels (land, cosatal, inf)
 
@@ -262,12 +351,10 @@ def get_invalid_mask(img, n, landmask_border=20, **kwargs):
         input Nansat object
     landmask_border : int
         border around landmask
-    **kwargs : dict
-        dummy params
 
     Returns
     -------
-    mask : bool
+    mask : 2D bool ndarray
         True where pixels are invalid
     """
     mask = np.isnan(img) + np.isinf(img)

@@ -70,13 +70,13 @@ class SeaIceDriftTestBase(unittest.TestCase):
         self.imgMin = 0.001
         self.imgMax = 0.013
         self.nFeatures = 5000
-        self.img1 = get_uint8_image(self.n1['sigma0_HV'], self.imgMin, self.imgMax)
-        self.img2 = get_uint8_image(self.n2['sigma0_HV'], self.imgMin, self.imgMax)
+        self.img1 = get_uint8_image(self.n1['sigma0_HV'], self.imgMin, self.imgMax, 0, 0)
+        self.img2 = get_uint8_image(self.n2['sigma0_HV'], self.imgMin, self.imgMax, 0, 0)
 
 class SeaIceDriftLibTests(SeaIceDriftTestBase):
     def test_get_uint8_image(self):
         ''' Shall scale image values from float (or any) to 0 - 255 [uint8] '''
-        imageUint8 = get_uint8_image(self.n1['sigma0_HV'], self.imgMin, self.imgMax)
+        imageUint8 = get_uint8_image(self.n1['sigma0_HV'], self.imgMin, self.imgMax, 0, 0)
         plt.imsave('sea_ice_drift_tests_%s.png' % inspect.currentframe().f_code.co_name,
                     imageUint8, vmin=0, vmax=255)
 
@@ -117,9 +117,19 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
         invalid_mask[:100,:100] = True
         mock_get_invalid_mask.return_value = invalid_mask
         n = get_n(self.testFiles[0],
-                           'sigma0_HV', 0.5, 0.001, 0.013, False, False)
+                           bandName='sigma0_HV',
+                           factor=0.5,
+                           vmin=0.001,
+                           vmax=0.013,
+                           denoise=False,
+                           dB=False)
         n = get_n(self.testFiles[0],
-                           'sigma0_HV', 0.5, -20, -15, False, True)
+                           bandName='sigma0_HV',
+                           factor=0.5,
+                           vmin=-20,
+                           vmax=-15,
+                           denoise=False,
+                           dB=True)
 
         self.assertIsInstance(n, Nansat)
         self.assertEqual(n[1].dtype, np.uint8)
@@ -131,7 +141,7 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
         img = n[1]
         mask = np.zeros((np.array(img.shape)/20).astype(int))
         n.watermask = MagicMock(return_value=[None, mask])
-        mask = get_invalid_mask(img, n)
+        mask = get_invalid_mask(img, n, 20)
         self.assertEqual(np.where(mask)[0].size, 0)
 
     def test_get_invalid_mask_some_valid(self):
@@ -140,14 +150,14 @@ class SeaIceDriftLibTests(SeaIceDriftTestBase):
         mask = np.zeros((np.array(img.shape)/20).astype(int))
         mask[:10,:] = 2
         n.watermask = MagicMock(return_value=[None, mask])
-        mask = get_invalid_mask(img, n)
+        mask = get_invalid_mask(img, n, 20)
         self.assertGreater(np.where(mask)[0].size, 0)
 
     def test_get_invalid_mask_with_error(self):
         n = Nansat(self.testFiles[0])
         n.watermask = MagicMock(return_value=None, side_effect=KeyError('foo'))
         img = n[1]
-        mask = get_invalid_mask(img, n)
+        mask = get_invalid_mask(img, n, 20)
         self.assertFalse(np.any(mask))
 
     def test_interpolation_poly(self):
