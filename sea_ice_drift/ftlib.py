@@ -254,9 +254,11 @@ def feature_tracking(n1, n2, **kwargs):
         x2 : 1D vector - destination X coordinates on img2, pix
         y2 : 1D vector - destination Y coordinates on img2, pix
     '''
-    # find many key points
+    # find many keypoints
     kp1, descr1 = find_key_points(n1[1], **kwargs)
     kp2, descr2 = find_key_points(n2[1], **kwargs)
+    if len(kp1) < 2 or len(kp2) < 2:
+        return (np.array([]),)*4
 
     # filter keypoints by Domain
     kp1, descr1 = domain_filter(n1, kp1, descr1, n2, **kwargs)
