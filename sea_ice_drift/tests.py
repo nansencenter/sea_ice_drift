@@ -21,7 +21,7 @@ import unittest
 import inspect
 from mock import MagicMock, patch
 
-import gdal
+from osgeo import gdal
 import numpy as np
 import matplotlib.pyplot as plt
 plt.switch_backend('Agg')
