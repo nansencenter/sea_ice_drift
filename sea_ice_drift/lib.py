@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.ndimage import zoom, maximum_filter
 from scipy.interpolate import griddata
-import gdal
+from osgeo import gdal
 
 from nansat import Nansat, Domain, NSR
 

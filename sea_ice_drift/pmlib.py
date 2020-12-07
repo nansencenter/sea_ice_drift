@@ -20,7 +20,7 @@ from multiprocessing import Pool
 import numpy as np
 from scipy import ndimage as nd
 import matplotlib.pyplot as plt
-import gdal
+from osgeo import gdal
 import cv2
 
 from nansat import NSR
