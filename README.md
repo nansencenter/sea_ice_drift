@@ -14,31 +14,14 @@ regular grid.
  * Korosov A.A. and Rampal P., A Combination of Feature Tracking and Pattern Matching with Optimal Parametrization for Sea Ice Drift Retrieval from SAR Data, Remote Sens. 2017, 9(3), 258; [doi:10.3390/rs9030258](http://www.mdpi.com/2072-4292/9/3/258)
  * Muckenhuber S., Korosov A.A., and Sandven S., Open-source feature-tracking algorithm for sea ice drift retrieval from Sentinel-1 SAR imagery, The Cryosphere, 10, 913-925, [doi:10.5194/tc-10-913-2016](http://www.the-cryosphere.net/10/913/2016/), 2016
 
-## Requirements:
- * [Nansat](https://github.com/nansencenter/nansat) - scientist friendly open-source Python toolbox for processing 2D satellite earth observation data)
- * [OpenCV](http://opencv.org) - open-source computer vision
-
-## Installation with conda
-```
-# Install Python, OpenCV and other requirements using miniconda (http://conda.pydata.org/miniconda.html):
-conda create -q --yes -n py3drift -c conda-forge python=3.6 numpy scipy matplotlib netcdf4 gdal opencv nose
-
-# Activate the conda environment with installed requirements:
-source activate py3drift
-
-# Use pip to install from the repo:
-pip install https://github.com/nansencenter/sea_ice_drift/archive/v0.7.tar.gz
-```
-
 ## Installation with docker
 ```
-# run ipython with Nansat and SeaIceDrift installed
-docker run --rm -it -v /path/to/data:/src nansencenter/seaicedrift ipython
+# run ipython with SeaIceDrift
+docker run --rm -it -v /path/to/data:/home/jovyan/work nansencenter/seaicedrift ipython
 
-# run jupyter notebook with Nansat and SeaIceDrift installed
-docker run --rm -it -p 8888:8888 -v /path/to/data/and/notebooks:/src nansencenter/seaicedrift
+# run jupyter notebook with SeaIceDrift
+docker run --rm -p 8888:8888 -v /path/to/data/and/notebooks:/home/jovyan/work nansencenter/seaicedrift
 ```
-
 
 ## Example
 ```
