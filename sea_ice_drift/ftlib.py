@@ -28,6 +28,7 @@ def find_key_points(image,
                     nFeatures=100000,
                     nLevels=7,
                     patchSize=34,
+                    verbose=False,
                     **kwargs):
     ''' Initiate detector and find key points on an image
     Parameters
@@ -54,10 +55,9 @@ def find_key_points(image,
         detector.setInt('nFeatures', nFeatures)
         detector.setInt('nLevels', nLevels)
         detector.setInt('patchSize', patchSize)
-    print('ORB detector initiated')
-
     keyPoints, descriptors = detector.detectAndCompute(image, None)
-    print('Key points found: %d' % len(keyPoints))
+    if verbose:
+        print('Key points found: %d' % len(keyPoints))
     return keyPoints, descriptors
 
 
@@ -66,7 +66,7 @@ def get_match_coords(keyPoints1, descriptors1,
                                     matcher=cv2.BFMatcher,
                                     norm=cv2.NORM_HAMMING,
                                     ratio_test=0.7,
-                                    verbose=True,
+                                    verbose=False,
                                     **kwargs):
     ''' Filter matching keypoints and convert to X,Y coordinates
     Parameters
@@ -89,7 +89,7 @@ def get_match_coords(keyPoints1, descriptors1,
                                      keyPoints1, keyPoints2, verbose)
     return x1, y1, x2, y2
 
-def _get_matches(descriptors1, descriptors2, matcher, norm, verbose):
+def _get_matches(descriptors1, descriptors2, matcher, norm, verbose=False):
     ''' Match keypoints using BFMatcher with cv2.NORM_HAMMING '''
     t0 = time.time()
     bf = matcher(norm)
@@ -99,7 +99,7 @@ def _get_matches(descriptors1, descriptors2, matcher, norm, verbose):
         print('Keypoints matched', t1 - t0)
     return matches
 
-def _filter_matches(matches, ratio_test, keyPoints1, keyPoints2, verbose):
+def _filter_matches(matches, ratio_test, keyPoints1, keyPoints2, verbose=False):
     ''' Apply ratio test from Lowe '''
     good = []
     for m,n in matches:
@@ -115,7 +115,7 @@ def _filter_matches(matches, ratio_test, keyPoints1, keyPoints2, verbose):
     y2 = np.array([keyPoints2[m.trainIdx].pt[1] for m in good])
     return x1, y1, x2, y2
 
-def domain_filter(n, keyPoints, descr, domain, domainMargin=0, **kwargs):
+def domain_filter(n, keyPoints, descr, domain, domainMargin=0, verbose=False, **kwargs):
     ''' Finds <keyPoints> from Nansat objects <n> which are within <domain>
     Parameters
     ----------
@@ -137,11 +137,11 @@ def domain_filter(n, keyPoints, descr, domain, domainMargin=0, **kwargs):
            (rowsD >= 0 + domainMargin) *
            (colsD <= domain.shape()[1] - domainMargin) *
            (rowsD <= domain.shape()[0] - domainMargin))
-
-    print('Domain filter: %d -> %d' % (len(keyPoints), len(gpi[gpi])))
+    if verbose:
+        print('Domain filter: %d -> %d' % (len(keyPoints), len(gpi[gpi])))
     return list(np.array(keyPoints)[gpi]), descr[gpi]
 
-def max_drift_filter(n1, x1, y1, n2, x2, y2, max_speed=0.5, max_drift=None, **kwargs):
+def max_drift_filter(n1, x1, y1, n2, x2, y2, max_speed=0.5, max_drift=None, verbose=False, **kwargs):
     ''' Filter out too high drift (m/s)
     Parameters
     ----------
@@ -196,11 +196,11 @@ def max_drift_filter(n1, x1, y1, n2, x2, y2, max_speed=0.5, max_drift=None, **kw
         Vectors with displacement higher than <max_drift> will be removed.
 
         ''')
-
-    print('MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi])))
+    if verbose:
+        print('MaxDrift filter: %d -> %d' % (len(x1), len(gpi[gpi])))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
-def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, **kwargs):
+def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, verbose=False, **kwargs):
     ''' Remove vectors that don't fit the model x1 = f(x2, y2)^n
 
     Fit the model x1 = f(x2, y2)^n using least squares method
@@ -228,7 +228,8 @@ def lstsq_filter(x1, y1, x2, y2, psi=200, order=2, **kwargs):
     # find pixels with error below psi
     gpi = err < psi
 
-    print('LSTSQ filter: %d -> %d' % (len(x1), len(gpi[gpi])))
+    if verbose:
+        print('LSTSQ filter: %d -> %d' % (len(x1), len(gpi[gpi])))
     return x1[gpi], y1[gpi], x2[gpi], y2[gpi]
 
 
