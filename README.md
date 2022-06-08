@@ -14,7 +14,7 @@ regular grid.
  * Korosov A.A. and Rampal P., A Combination of Feature Tracking and Pattern Matching with Optimal Parametrization for Sea Ice Drift Retrieval from SAR Data, Remote Sens. 2017, 9(3), 258; [doi:10.3390/rs9030258](http://www.mdpi.com/2072-4292/9/3/258)
  * Muckenhuber S., Korosov A.A., and Sandven S., Open-source feature-tracking algorithm for sea ice drift retrieval from Sentinel-1 SAR imagery, The Cryosphere, 10, 913-925, [doi:10.5194/tc-10-913-2016](http://www.the-cryosphere.net/10/913/2016/), 2016
 
-## Installation with docker
+## Running with Docker
 ```
 # run ipython with SeaIceDrift
 docker run --rm -it -v /path/to/data:/home/jovyan/work nansencenter/seaicedrift ipython
@@ -23,7 +23,26 @@ docker run --rm -it -v /path/to/data:/home/jovyan/work nansencenter/seaicedrift 
 docker run --rm -p 8888:8888 -v /path/to/data/and/notebooks:/home/jovyan/work nansencenter/seaicedrift
 ```
 
-## Example
+## Installation on Ubuntu
+```
+# install some requirements with apt-get
+apt-get install -y --no-install-recommends libgl1-mesa-glx gcc build-essential
+
+# install some requirements with conda
+conda install -c conda-forge gdal cartopy opencv
+
+# install other requirements with pip
+pip install netcdf4 nansat
+
+# clone code
+git clone https://github.com/nansencenter/sea_ice_drift.git
+cd sea_ice_drift
+
+# install SeaIceDrift
+python setup.py install
+```
+
+## Usage example
 ```
 # download example datasets
 wget https://github.com/nansencenter/sea_ice_drift_test_files/raw/master/S1B_EW_GRDM_1SDH_20200123T120618.tif
