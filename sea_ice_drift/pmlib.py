@@ -33,6 +33,12 @@ from sea_ice_drift.lib import (interpolation_poly,
 shared_args = None
 shared_kwargs = None
 
+def _init_pool(*args):
+    """ Initialize shared data for multiprocessing (module-level so it can be pickled) """
+    global shared_args, shared_kwargs
+    shared_args = args[:9]
+    shared_kwargs = args[9]
+
 def get_hessian(ccm, hes_norm=True, hes_smth=False, **kwargs):
     """ Find Hessian of the input cross correlation matrix <ccm>
 
@@ -426,12 +432,6 @@ def pattern_matching(lon_pm1, lat_pm1,
            (r1pm1i+hws_hypot+margin < n1.shape()[0]))
 
     alpha0 = get_initial_rotation(n1, n2)
-
-    def _init_pool(*args):
-        """ Initialize shared data for multiprocessing """
-        global shared_args, shared_kwargs
-        shared_args = args[:9]
-        shared_kwargs = args[9]
 
     if threads <= 1:
         # run MCC without threads
